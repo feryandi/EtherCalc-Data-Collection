@@ -1,5 +1,6 @@
 ethercalc:
-  image: audreyt/ethercalc
+  #image: audreyt/ethercalc
+  build: .
   ports:
     - "80:8000"
   links:

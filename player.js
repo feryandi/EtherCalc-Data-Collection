@@ -396,7 +396,7 @@
           return setTimeout(onReady, 1);
         });
         onLoad = function(ssInstance){
-          var ss, ref$, ref1$, ref2$, ref3$;
+          var ss, ref$, ref1$, ref2$, ref3$, ref4$, ref5$;
           ssInstance == null && (ssInstance = SocialCalc.CurrentSpreadsheetControlObject);
           window.spreadsheet = ss = ssInstance || (SocialCalc._view || SocialCalc._app
             ? new SocialCalc.SpreadsheetViewer()
@@ -447,6 +447,28 @@
             ref3$.SettingsCallbacks.graph = {
               save: window.GraphSave,
               load: window.GraphLoad
+            };
+          }
+          SocialCalc.Constants.s_loc_database = "Data Collector";
+          if (ss.tabs) {
+            ss.tabnums.database = ss.tabs.length;
+          }
+          if ((ref4$ = ss.tabs) != null) {
+            ref4$.push({
+              name: 'database',
+              text: SocialCalc.Constants.s_loc_database,
+              html: "<div id=\"%id.databasetools\" style=\"display:none;\"><div style=\"%tbt.\"><table cellspacing=\"0\" cellpadding=\"0\"><tr><td style=\"vertical-align:middle;padding-right:32px;padding-left:16px;\"><div style=\"%tbt.\">Database<br>Settings</div></td><td style=\"vertical-align:middle;padding-right:16px;\"><div style=\"%tbt.\">Host</div><input type=\"text\" id=\"%id.databaseHost\" style=\"font-size:x-small;width:75px;\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\"/></td><td style=\"vertical-align:middle;padding-right:16px;\"><div style=\"%tbt.\">Port</div><input type=\"text\" id=\"%id.databasePort\" style=\"font-size:x-small;width:75px;\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\"/></td><td style=\"vertical-align:middle;padding-left:16px;padding-right:16px;border-left: 1px solid rgb(192,192,192);\"><div style=\"%tbt.\">Username</div><input type=\"text\" id=\"%id.databaseUsername\" style=\"font-size:x-small;width:75px;\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\"/></td><td style=\"vertical-align:middle;padding-right:16px;\"><div style=\"%tbt.\">Password</div><input type=\"text\" id=\"%id.databasePassword\" style=\"font-size:x-small;width:75px;\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\"/></td><td style=\"vertical-align:middle;padding-left:16px;padding-right:16px;border-left: 1px solid rgb(192,192,192);\"><div style=\"%tbt.\">Database Name</div><input type=\"text\" id=\"%id.databaseDBName\" style=\"font-size:x-small;width:75px;\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\"/></td><td style=\"vertical-align:middle;padding-left:16px;padding-right:16px;border-left: 1px solid rgb(192,192,192);\"><input type=\"button\" value=\"Connect\" onclick=\"\" style=\"font-size:x-small;\"></td><td style=\"vertical-align:middle;padding-left:16px;padding-right:16px;border-left: 1px solid rgb(192,192,192);\"><input type=\"button\" value=\"Save to Database\" onclick=\"\" style=\"font-size:x-small;\"></td></tr></table></div></div>",
+              view: 'database',
+              onclick: window.DatabaseOnClick,
+              onclickFocus: true
+            });
+          }
+          if ((ref5$ = ss.views) != null) {
+            ref5$.database = {
+              name: 'database',
+              divStyle: "overflow:auto;",
+              values: {},
+              html: '<div style="padding:6px;">Data Collector View</div>'
             };
           }
           ss.sheet.cells["A1"] = new SocialCalc.Cell("A1");

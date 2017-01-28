@@ -10,6 +10,7 @@
     this.include('dotcloud');
     this.include('player-broadcast');
     this.include('player-graph');
+    this.include('player-database');
     this.include('player');
     J = require('j');
     csvParse = require('csv-parse');

@@ -26,6 +26,7 @@ socket.io/socket.io.js
 zappa/zappa.js
 player/broadcast.js
 player/graph.js
+player/database.js
 player/main.js
 static/socialcalc.css
 static/index.css

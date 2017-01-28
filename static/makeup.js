@@ -9,7 +9,9 @@ jQuery(document).ready(function() {
                    '#SocialCalc-commenttools input,'+
                    '#SocialCalc-namestools input[type!="checkbox"], #SocialCalc-namestools select,'+
                    '#SocialCalc-clipboardview input,'+
-                   '#SocialCalc-graphtools input, #SocialCalc-graphtools select')
+                   '#SocialCalc-graphtools input, #SocialCalc-graphtools select,'+                 
+                   '#SocialCalc-databaseview input, #SocialCalc-databaseview select,'+                 
+                   '#SocialCalc-databasetools input, #SocialCalc-databasetools select')
                 .addClass('btn btn-default btn-xs');
 
             jQuery('#SocialCalc-commenttools textarea, #SocialCalc-clipboardview textarea').addClass('form-control');

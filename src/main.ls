@@ -7,6 +7,7 @@
   @include \dotcloud
   @include \player-broadcast
   @include \player-graph
+  @include \player-database
   @include \player
 
   J = require \j
