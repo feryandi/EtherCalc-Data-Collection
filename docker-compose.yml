@@ -5,6 +5,7 @@ ethercalc:
     - "80:8000"
   links:
     - redis:redis
+    - mysql:mysql
   restart: always
 redis:
   image: redis:latest
@@ -12,3 +13,13 @@ redis:
     - /var/lib/redis:/data
   command: redis-server --appendonly yes
   restart: always
+mysql:
+  image: mysql:5.7
+  volumes:
+    - db_data:/var/lib/mysql
+  restart: always
+  environment:
+    MYSQL_ROOT_PASSWORD: root
+    MYSQL_DATABASE: TA
+    MYSQL_USER: user
+    MYSQL_PASSWORD: user

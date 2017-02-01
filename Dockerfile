@@ -15,4 +15,4 @@ EXPOSE 8000
 
 #CMD ["sh", "-c", "REDIS_HOST=$REDIS_PORT_6379_TCP_ADDR REDIS_PORT=$REDIS_PORT_6379_TCP_PORT pm2 start -x `which ethercalc` -- --cors && pm2 logs"]
 
-CMD ["sh", "-c", "REDIS_HOST=$REDIS_PORT_6379_TCP_ADDR REDIS_PORT=$REDIS_PORT_6379_TCP_PORT pm2 start -x /home/ethercalc/ethercalc/app.js -- --cors && pm2 logs"]
+CMD ["sh", "-c", "REDIS_HOST=$REDIS_PORT_6379_TCP_ADDR REDIS_PORT=$REDIS_PORT_6379_TCP_PORT MYSQL_HOST=$MYSQL_PORT_3306_TCP_ADDR MYSQL_PORT=$MYSQL_PORT_3306_TCP_PORT pm2 start -x /home/ethercalc/ethercalc/app.js -- --cors && pm2 logs"]

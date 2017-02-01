@@ -14,7 +14,11 @@
   csv-parse = require \csv-parse
 
   DB = @include \db
+  MYSQL = @include \mysql
   SC = @include \sc
+
+  MYSQL.log!
+  MYSQL.test!
 
   KEY = @KEY
   BASEPATH = @BASEPATH

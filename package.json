@@ -14,6 +14,7 @@
     "j": "0.4.x",
     "livescript": "1.5.x",
     "minimatch": "*",
+    "mysql": "github:mysqljs/mysql",
     "nodemailer": "*",
     "optimist": "*",
     "redis": "0.12.x",
