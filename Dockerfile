@@ -5,7 +5,7 @@ RUN useradd ethercalc --create-home
 RUN npm install -g pm2
 
 COPY . /home/ethercalc/ethercalc
-RUN npm i /home/ethercalc/ethercalc
+#RUN npm i /home/ethercalc/ethercalc
 
 USER ethercalc
 ENV HOME /home/ethercalc

@@ -3,7 +3,7 @@
   this.include = function(){
     return this.client({
       '/player/database.js': function(){
-        var $, SocialCalc, header_div, table_template;
+        var $, SocialCalc, header_div, table_template, MySheet, MyCell, LoadSheet;
         $ = window.jQuery || window.$;
         if (!$) {
           return location.reload();
@@ -11,10 +11,357 @@
         SocialCalc = window.SocialCalc || alert('Cannot find window.SocialCalc');
         header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"\" style=\"font-size:x-small;\"></td></tr></table>";
         table_template = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><center><h4>Table 1</h4></center></div><div><table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Range</th><th>Type Validation</th><th>Range Validation</th><th>Relation Validation</th></tr></thead><tr><td><input id=\"%id.t1.databaseLabel1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"%id.t1.databaseData1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><select id=\"%id.t1.databaseTypeV1\" size=\"1\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"><option selected>None</option><option>String</option><option>Integer</option></select></td><td><input id=\"%id.t1.databaseRangeV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"%id.t1.databaseRelationV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td></tr></table></div></div>";
-        return window.DatabaseOnClick = function(s, t){
-          var gview;
+        MySheet = (function(){
+          MySheet.displayName = 'MySheet';
+          var prototype = MySheet.prototype, constructor = MySheet;
+          function MySheet(){
+            this.sheetdict = [];
+            this.mergerowdict = [];
+            this.maxcolnum = 0;
+            this.maxrownum = 0;
+            this.nrownum = 0;
+            this.ncolnum = 0;
+            this.txt = '';
+            this.mergestrarr = [];
+            this.mergecellset = [];
+          }
+          MySheet.prototype.AddMergeCell = function(row1, row2, col1, col2){
+            var i$, rownum, j$, colnum, obj;
+            for (i$ = row1; i$ <= row2; ++i$) {
+              rownum = i$;
+              this.mergerowdict[rownum] = true;
+              for (j$ = col1; j$ <= col2; ++j$) {
+                colnum = j$;
+                obj = SocialCalc.rcColname(colnum) + rownum;
+                this.mergecellset.push(obj);
+              }
+            }
+          };
+          MySheet.prototype.InsertCell = function(rownum, colnum, nrownum, ncolnum, mtype, indents, alignstyle, borderstyle, bgcolor, boldflag, height, italicflag, underlineflag, value){
+            var mycell;
+            this.nrownum = nrownum;
+            this.ncolnum = ncolnum;
+            if (rownum > this.maxrownum) {
+              this.maxrownum = rownum;
+            }
+            if (colnum > this.maxcolnum) {
+              this.maxcolnum = colnum;
+            }
+            mycell = new MyCell(value, mtype, indents, alignstyle, boldflag, borderstyle, bgcolor, height, italicflag, underlineflag);
+            this.sheetdict.splice(SocialCalc.rcColname(colnum) + rownum, 0, mycell);
+            if (mtype === 'str') {
+              return this.txt += value + ' ';
+            }
+          };
+          return MySheet;
+        }());
+        MyCell = (function(){
+          MyCell.displayName = 'MyCell';
+          var prototype = MyCell.prototype, constructor = MyCell;
+          function MyCell(value, mtype, indents, alignstyle, boldflag, borderstyle, bgcolor, height, italicflag, underlineflag){
+            this.cstr = value;
+            this.mtype = mtype;
+            this.indents = this.GetIndents(indents);
+            this.centeralign_flag = false;
+            this.leftalign_flag = false;
+            this.rightalign_flag = false;
+            if (alignstyle === 1) {
+              this.leftalign_flag = true;
+            } else if (alignstyle === 2) {
+              this.centeralign_flag = true;
+            } else if (alignstyle === 3) {
+              this.rightalign_flag = true;
+            }
+            this.boldflag = false;
+            if (boldflag === 1) {
+              this.boldflag = true;
+            }
+            this.bottomborder = false;
+            this.upperborder = false;
+            this.leftborder = false;
+            this.rightborder = false;
+            if (borderstyle[0] === '1') {
+              this.bottomborder = true;
+            }
+            if (borderstyle[1] === '1') {
+              this.upperborder = true;
+            }
+            if (borderstyle[2] === '1') {
+              this.leftborder = true;
+            }
+            if (borderstyle[3] === '1') {
+              this.rightborder = true;
+            }
+            this.bgcolor = bgcolor;
+            this.height = height;
+            this.italic = italicflag;
+            this.underline = underlineflag;
+            this.mergecellcount = 1;
+            this.startcol = 0;
+          }
+          MyCell.prototype.WritestrAlignstyle = function(){
+            if (this.leftalign_flag) {
+              return '1';
+            } else if (this.centeralign_flag) {
+              return '2';
+            } else if (this.rightalign_flag) {
+              return '3';
+            }
+            return '0';
+          };
+          MyCell.prototype.WritestrBordstyle = function(){
+            var cstr;
+            cstr = '';
+            if (this.bottomborder) {
+              cstr += '1';
+            } else {
+              cstr += '0';
+            }
+            if (this.upperborder) {
+              cstr += '1';
+            } else {
+              cstr += '0';
+            }
+            if (this.leftborder) {
+              cstr += '1';
+            } else {
+              cstr += '0';
+            }
+            if (this.rightborder) {
+              cstr += '1';
+            } else {
+              cstr += '0';
+            }
+            return cstr;
+          };
+          MyCell.prototype.GetIndents = function(indents){
+            var i$, to$, i;
+            if (this.cstr.length === 0) {
+              return 0;
+            }
+            for (i$ = 0, to$ = this.cstr.length - 1; i$ <= to$; ++i$) {
+              i = i$;
+              if (this.cstr.charAt(i === ' ') || !!this.cstr.charAt(i).match(/^[.,:!?]/)) {
+                continue;
+              } else {
+                break;
+              }
+            }
+            return i + indents * 2;
+          };
+          return MyCell;
+        }());
+        LoadSheet = (function(){
+          LoadSheet.displayName = 'LoadSheet';
+          var prototype = LoadSheet.prototype, constructor = LoadSheet;
+          function LoadSheet(spreadsheet){
+            this.wb = spreadsheet;
+          }
+          LoadSheet.prototype.LoadSheetDict = function(){
+            var sheetdict, cmysheet, str, i$, to$, rownum, j$, to1$, colnum, cellName, cell, cellType, cStr, cellDType, cellAttr, cellTxt, row1, row2, col1, col2, indents, alignstyle, borderstyle, bgcolor, boldflag, height, italicflag, underlineflag;
+            sheetdict = [];
+            cmysheet = new MySheet;
+            str = '';
+            for (i$ = 1, to$ = this.wb.sheet.LastRow(); i$ <= to$; ++i$) {
+              rownum = i$;
+              for (j$ = 1, to1$ = this.wb.sheet.LastCol(); j$ <= to1$; ++j$) {
+                colnum = j$;
+                cellName = SocialCalc.rcColname(colnum) + rownum;
+                cell = this.wb.sheet.GetAssuredCell(cellName);
+                cellType = this.GetValueType(cell.valuetype);
+                if (cellType > 0 || cellType < 5) {
+                  cStr = cell.datavalue;
+                  cellDType = this.GetDataType(cell.datatype, cStr);
+                  cellAttr = this.wb.sheet.EncodeCellAttributes(cellName);
+                  cellTxt = JSON.stringify(this.wb.sheet.EncodeCellAttributes(cellName));
+                  if (cellAttr.rowspan.val > 1 || cellAttr.colspan.val > 1) {
+                    row1 = rownum;
+                    row2 = rownum + cellAttr.rowspan.val - 1;
+                    col1 = colnum;
+                    col2 = colnum + cellAttr.colspan.val - 1;
+                    cmysheet.AddMergeCell(row1, row2, col1, col2);
+                  }
+                  indents = parseInt(this.FeatureIndentation(cellAttr));
+                  alignstyle = parseInt(this.FeatureAlignStyle(cellAttr));
+                  borderstyle = this.FeatureBorderStyle(cellAttr);
+                  bgcolor = this.FeatureFontBgcolor(cellAttr);
+                  boldflag = parseInt(this.FeatureFontBold(cellAttr));
+                  height = parseInt(this.FeatureFontHeight(cellAttr));
+                  italicflag = parseInt(this.FeatureFontItalic(cellAttr));
+                  underlineflag = parseInt(this.FeatureFontUnderline(cellAttr));
+                  cmysheet.InsertCell(rownum, colnum, this.wb.sheet.LastRow(), this.wb.sheet.LastCol(), cellType, indents, alignstyle, borderstyle, bgcolor, boldflag, height, italicflag, underlineflag, cStr);
+                }
+                str += '([' + cellName + '] ' + indents + ', ' + alignstyle + ', ' + borderstyle + ', ' + bgcolor + ', ' + boldflag + ', ' + height + ', ' + italicflag + ', ' + underlineflag + ')';
+              }
+              str += '<br/>';
+            }
+            sheetdict.splice('Sheet1', 0, cmysheet);
+            return sheetdict;
+          };
+          LoadSheet.prototype.GetValueType = function(type){
+            var ct;
+            switch (type) {
+            case 't':
+              ct = 1;
+              break;
+            case 'n':
+              ct = 2;
+              break;
+            case 'nd':
+              ct = 3;
+              break;
+            case 'nl':
+              ct = 4;
+              break;
+            case 'e':
+              ct = 5;
+              break;
+            case 'b':
+              ct = 6;
+              break;
+            default:
+              ct = 0;
+            }
+            return ct;
+          };
+          LoadSheet.prototype.GetDataType = function(type, value){
+            switch (type) {
+            case 't':
+              type = 'str';
+              break;
+            case 'v':
+              if (value % 1 === 0) {
+                type = 'int';
+              } else {
+                type = 'float';
+              }
+              break;
+            case 'c':
+              type = 'str';
+            }
+            return type;
+          };
+          LoadSheet.prototype.FeatureIndentation = function(cellAttr){
+            var val, unit;
+            if (cellAttr.padleft.def) {
+              return 0;
+            } else {
+              val = cellAttr.padleft.val;
+              unit = val.substring(val.length - 2);
+              if (unit === 'pt') {
+                return val.substring(0, val.length - 2);
+              } else if (unit === 'px') {
+                return val.substring(0, val.length - 2) * 1.3333;
+              }
+            }
+          };
+          LoadSheet.prototype.FeatureAlignStyle = function(cellAttr){
+            if (cellAttr.alignhoriz.def) {
+              return '1';
+            } else {
+              switch (cellAttr.alignhoriz.val) {
+              case 'left':
+                return '1';
+              case 'center':
+                return '2';
+              case 'right':
+                return '3';
+              }
+            }
+          };
+          LoadSheet.prototype.FeatureFontBold = function(cellAttr){
+            if (cellAttr.fontlook.def) {
+              return '0';
+            } else {
+              switch (cellAttr.fontlook.val) {
+              case 'normal bold':
+                return '1';
+              case 'italic bold':
+                return '1';
+              default:
+                return '0';
+              }
+            }
+          };
+          LoadSheet.prototype.FeatureFontHeight = function(cellAttr){
+            var val, unit;
+            if (cellAttr.fontsize.def) {
+              return 10;
+            } else {
+              val = cellAttr.fontsize.val;
+              unit = val.substring(val.length - 2);
+              if (unit === 'pt') {
+                return val.substring(0, val.length - 2);
+              } else if (unit === 'px') {
+                return val.substring(0, val.length - 2) * 0.75;
+              } else {
+                switch (cellAttr.fontsize.val) {
+                case 'x-small':
+                  return 8;
+                case 'small':
+                  return 10;
+                case 'medium':
+                  return 12;
+                case 'large':
+                  return 14;
+                case 'x-large':
+                  return 18;
+                }
+              }
+            }
+          };
+          LoadSheet.prototype.FeatureFontUnderline = function(cellAttr){
+            return '0';
+          };
+          LoadSheet.prototype.FeatureFontItalic = function(cellAttr){
+            if (cellAttr.fontlook.def) {
+              return '0';
+            } else {
+              switch (cellAttr.fontlook.val) {
+              case 'italic normal':
+                return '1';
+              case 'italic bold':
+                return '1';
+              default:
+                return '0';
+              }
+            }
+          };
+          LoadSheet.prototype.FeatureFontBgcolor = function(cellAttr){
+            return cellAttr.bgcolor.val;
+          };
+          LoadSheet.prototype.FeatureBorderStyle = function(cellAttr){
+            var str;
+            str = '';
+            if (cellAttr.bt.val === '') {
+              str += '0';
+            } else {
+              str += '1';
+            }
+            if (cellAttr.bb.val === '') {
+              str += '0';
+            } else {
+              str += '1';
+            }
+            if (cellAttr.bl.val === '') {
+              str += '0';
+            } else {
+              str += '1';
+            }
+            if (cellAttr.br.val === '') {
+              str += '0';
+            } else {
+              str += '1';
+            }
+            return str;
+          };
+          return LoadSheet;
+        }());
+        window.DatabaseOnClick = function(s, t){
+          var ls, gview;
+          ls = new LoadSheet(SocialCalc.GetSpreadsheetControlObject());
           gview = spreadsheet.views.database.element;
-          gview.innerHTML = header_div + table_template;
+          gview.innerHTML = ls.LoadSheetDict();
           return;
         };
       }
