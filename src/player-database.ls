@@ -7,11 +7,374 @@
 
   table_template = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><center><h4>Table 1</h4></center></div><div><table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Range</th><th>Type Validation</th><th>Range Validation</th><th>Relation Validation</th></tr></thead><tr><td><input id=\"%id.t1.databaseLabel1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"%id.t1.databaseData1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><select id=\"%id.t1.databaseTypeV1\" size=\"1\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"><option selected>None</option><option>String</option><option>Integer</option></select></td><td><input id=\"%id.t1.databaseRangeV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"%id.t1.databaseRelationV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td></tr></table></div></div>"
 
+  class Feature_SheetRow
+    (null) ->
+      @naset = ['(na)', 'n/a', '(n/a)', '(x)', '-', '--', 'z', '...']
+      @spcharset = ['<', '#', '>', ';', '$'] #notused because using regex
+      @myformat = new FeatureFormat
+      @goodrowset = []
+
+    GenerateSingularFeatureCrf: (mysheet, filename, sheetname) ->
+      feadict = {}
+      for crow from 0 to mysheet.nrownum-1
+        rowcelldict = {}
+        for ccol from 0 to mysheet.ncolnum-1
+          if mysheet.sheetdict[SocialCalc.rcColname(colnum) + rownum] != null ###MASIH RAGU DISINI BENER?
+            mycell = mysheet.sheetdict[SocialCalc.rcColname(colnum) + rownum]
+            rowcelldict[ccol] = mycell
+        if rowcelldict.length == 0
+          continue
+        if feadict[crow - 1] != null ###MASIH RAGU DISINI BENER?
+          blankflag = false
+        else
+          blankflag = true
+        feadict[crow] = @GenerateFeatureByRowCrf crow, rowcelldict, mysheet, blankflag
+      return feadict
+
+    GenerateFeatureByRowCrf: (crow, rowcelldict, mysheet, blankflag) ->
+      feavec = []        
+      clinetxt = ''
+
+      rowcelldict.forEach (value, i) ->
+        clinetxt += value.cstr + ' '      
+
+      # layout features
+      feavec.push blankflag
+      feavec.push @FeatureHasMergeCell crow, mysheet
+      feavec.push @FeatureReachRightBound crow, rowcelldict, mysheet.maxcolnum
+      feavec.push @FeatureReachLeftBound rowcelldict
+      feavec.push @FeatureIsOneColumn rowcelldict
+      feavec.push @FeatureHasCenterAlignCell crow, rowcelldict
+      feavec.push @FeatureHasLeftAlignCell crow, rowcelldict
+      feavec.push @FeatureHasBoldFontCell crow, rowcelldict
+      feavec.push @FeatureIndentation clinetxt
+      # textual features
+      feavec.push @FeatureStartWithTable clinetxt
+      feavec.push @FeatureStartWithPunctation clinetxt
+      feavec.push @FeatureNumberPercentHigh rowcelldict
+      feavec.push @FeatureDigitalPercentHigh rowcelldict
+      feavec.push @FeatureAlphabetaAllCapital clinetxt
+      feavec.push @FeatureAlphabetaStartWithCapital rowcelldict
+      feavec.push @FeatureAlphabetaStartWithLowercase rowcelldict
+      feavec.push @FeatureAlphabetaCellnumPercentHigh rowcelldict
+      feavec.push @FeatureAlphabetaPercentHigh clinetxt
+      feavec.push @FeatureContainSpecialChar clinetxt
+      feavec.push @FeatureContainColon clinetxt
+      feavec.push @FeatureYearRangeCellnumHigh rowcelldict
+      feavec.push @FeatureYearRangePercentHigh rowcelldict
+      feavec.push @FeatureWordLengthHigh rowcelldict      
+      return feavec
+
+    FeatureOneVariableTxt: (predicate, rowname, flag) ->
+      if flag == true
+        return @myformat.OneVariable predicate, rowname
+      return null
+
+    #########################################################
+    ####    row features
+    #########################################################
+
+    FeatureIsRow: (rowname) ->
+      return @myformat.OneVariable 'IsRow', rowname
+
+    FeatureWordRepeatHigh: (clinetxt, csheettxt) ->
+      wordarr = clinetxt.split /[^A-Za-z]/
+      reptcount = 0
+      wordcount = 0
+
+      csheetcount = []
+      csheettxt.forEach (x) -> 
+        csheetcount[x] = (csheetcount[x] || 0) + 1
+        return
+
+      for i from 0 to wordarr.length-1
+        if wordarr[i].length != 0
+          wordcount += 1
+          reptcount += csheetcount[cword]
+      if wordcount == 0
+        return false
+      if float(reptcount)/wordcount >= 2
+        return true
+      return false
+
+    FeatureWordLengthHigh: (rowcelldict) ->
+      if rowcelldict.length != 1
+        return false
+      retVal = false
+      rowcelldict.forEach (value, i) ->
+        cval = value.cstr
+        if cval.length > 40
+          retVal = true
+        return
+      return retVal
+
+    FeatureIndentation: (clinetxt) ->
+      for i from 0 to clinetxt.length-1
+        if clinetxt[i] >= 'A' and clinetxt[i] <= 'Z'
+          break
+        if clinetxt[i] >= 'a' and clinetxt[i]<= 'z'
+          break
+        if clinetxt[i] >= '0' and clinetxt[i] <= '9'
+          break
+      if i > 0
+        return true
+      return false
+
+    FeatureHasMergeCell: (crow, mysheet) ->      
+      if mysheet.mergerowdict.hasOwnProperty crow
+        return true
+      return false
+
+    FeatureReachRightBound: (crow, rowcelldict, ncolnum) ->
+      if rowcelldict.hasOwnProperty ncolnum
+        return true
+      return false
+    
+    FeatureReachLeftBound: (rowcelldict) ->
+      if rowcelldict.hasOwnProperty 0
+        return true
+      return false
+
+    FeatureNumberPercentHigh: (rowcelldict) ->
+      if rowcelldict.length == 0
+        return false
+      digitalcount = 0
+      rowcelldict.forEach (value, i) ->
+        cstr = value.cstr
+        if @hasDigits cstr
+          digitalcount += 1
+        else if @isNa cstr
+          digitalcount += 1
+      if float(digitalcount)/(rowcelldict).length >= 0.6
+          return true
+      return false
+
+    FeatureDigitalPercentHigh: (rowcelldict) ->
+      if rowcelldict.length == 0
+        return false
+      digitalcount = 0
+      rowcelldict.forEach (value, i) ->
+        cstr = value.cstr
+        if @isNumber cstr
+          digitalcount += 1
+        else if @isNa cstr
+          digitalcount += 1
+      if float(digitalcount)/(rowcelldict).length >= 0.6
+          return true
+      return false
+
+    FeatureYearRangeCellnumHigh: (rowcelldict) ->
+      if rowcelldict.length == 0
+        return false
+      yearcount = 0
+      rowcelldict.forEach (value, i) ->
+        cstr = value.cstr
+        digitarr = @getNumset cstr
+        digitarr.forEach (item) ->
+          if item >= 1800 and item <= 2300
+            yearcount += 1
+      if yearcount >= 3
+        return true
+      return false
+
+    FeatureYearRangePercentHigh: (rowcelldict) ->
+      if rowcelldict.length == 0
+        return false
+      yearcount = 0
+      totalcount = 1
+      rowcelldict.forEach (value, i) ->
+        cstr = value.cstr
+        digitarr = @getNumset cstr
+        totalcount += digitarr.length
+        digitarr.forEach (item) ->
+          if item >= 1800 and item <= 2300
+            yearcount += 1
+      if float(yearcount)/totalcount >= 0.7
+        return true
+      return false
+
+    FeatureAlphabetaStartWithCapital: (rowcelldict) ->
+      rowcelldict.forEach (value, i) ->
+        cstr = value.cstr
+        mtype = value.mtype
+        if mtype == 'str' and cstr.length != 0
+          if @hasLetter cstr and !((cstr.charAt 0) >= 'A' and (cstr.charAt 0) <= 'Z')
+            return false
+      return true
+      
+    FeatureAlphabetaStartWithLowercase: (rowcelldict) ->
+      ccol = -1
+      rowcelldict.forEach (value, i) ->
+        if ccol == -1 or ccol >= i
+          ccol = i
+      cstr = rowcelldict[ccol].cstr
+
+      if cstr.length == 0
+        return false
+      if @hasLetter cstr and ((cstr.charAt 0)>='a' and (cstr.charAt 0)<='z')
+        return true
+      return false
+
+    FeatureAlphabetaAllCapital: (clinetxt) ->
+      capitalcount = 0
+      for i from 0 to clinetxt.length-1
+        if (clinetxt.charAt i) >= 'A' and (clinetxt.charAt i) >= 'Z'
+          capitalcount += 1
+        else if (clinetxt.charAt i) >= 'a' and (clinetxt.charAt i) >= 'z'
+          return false
+      if capitalcount > 0
+        return true
+      return false
+    
+    FeatureAlphabetaCellnumPercentHigh: (rowcelldict) ->
+      count = 0
+      rowcelldict.forEach (value, i) ->
+        cstr = value.cstr
+        mtype = value.mtype
+        if mtype == 'str' and cstr.search(/[A-Za-z]/)
+          count += 1
+      if float(count)/(rowcelldict.length) >= 0.6
+        return true
+      return false
+     
+    FeatureAlphabetaPercentHigh: (clinetxt) ->
+      count = 0
+      for i from 0 to clinetxt.length-1
+        if (clinetxt.charAt i) >= 'A' and (clinetxt.charAt i) <= 'Z'
+          count += 1
+        else if (clinetxt.charAt i) >= 'a' and (clinetxt.charAt i) <= 'z'
+          count += 1
+      if float(count)/clinetxt.length >= 0.6
+        return true
+      return false
+
+    FeatureContainColon: (clinetxt) ->
+      if clinetxt.search ':' >= -1
+        return true
+      return false
+
+    FeatureContainSpecialChar: (clinetxt) ->
+      for i from 0 to clinetxt.length-1
+        if (clinetxt.charAt i).search /[\<#>;$]/ > -1
+          return true
+      return false
+    
+    FeatureIsOneColumn: (rowcelldict) ->
+      if rowcelldict.length == 1
+        return true
+      return false
+
+    FeatureHasCenterAlignCell: (crow, rowcelldict) ->
+      rowcelldict.forEach (value, i) ->
+        if value.centeralign_flag
+          return true
+      return false
+    
+    FeatureHasLeftAlignCell: (rownum, rowcelldict) ->
+      rowcelldict.forEach (value, i) ->
+        if value.leftalign_flag
+          return true
+      return false
+
+    FeatureHasBoldFontCell: (rownum, rowcelldict) ->
+      rowcelldict.forEach (value, i) ->
+        if value.boldflag
+          return true
+      return false
+
+    FeatureStartWithTable: (clinetxt) ->
+      if clinetxt.length == 0
+        return false
+      if @startsWith clinetxt.trim!, "Table"
+        return true
+      if @startsWith clinetxt.trim!, "Tabel"
+        return true
+      return false
+
+    FeatureStartWithPunctation: (clinetxt) ->
+      if clinetxt.length == 0
+        return false
+      cchar = clinetxt.charAt 0
+      if @hasDigits cchar
+        return false
+      if @hasLetter cchar
+        return false
+      return true
+
+    FeatureEndWithAnd: (clinetxt) ->
+      if clinetxt.length == 0
+        return false
+      if @endsWith (clinetxt.trim!).toLowerCase!, "and"
+        return true
+      if @endsWith clinetxt.trim!, ","
+        return true
+      return false
+
+    FeatureIsFirstRow: (rownum) ->
+      if rownum == 0
+        return true
+      return false
+    
+    FeatureIsLastRow: (rownum, maxrownum) ->
+      if rownum == maxrownum
+        return true
+      return false
+
+    #########################################################    
+
+    isNumber: (cstr) ->
+      return !(isNaN cstr)
+
+    hasLetter: (cstr) ->
+      if cstr.match /[A-Za-z]/
+        return true
+      return false
+
+    hasDigits: (cstr) ->
+      if cstr.match /[0-9]/
+        return true
+      return false
+    
+    isNa: (cstr) ->
+      @naset.forEach (value) ->
+        if cstr == value
+          return true
+      return false
+    
+    getNumset: (cstr) ->
+      carr = cstr.split(' ')
+      numset = []
+      carr.forEach (value) ->
+        if @isNumber value
+          numset.push(item)
+      return numset
+
+    getRowname: (filename, csheetname, rownum) ->
+      pfilename = filename.replace('.', '_')
+      psheetname = csheetname.replace(' ', '_')
+      return 'S' + pfilename + '____' + psheetname + '____' + rownum
+    
+    parseFilename: (filepath) ->
+      iarr = filepath.split('/')
+      return iarr[iarr.length-1]
+
+    startsWith: (str, prefix) ->
+      return (str.indexOf prefix) == 0
+
+    endsWith: (str, suffix) ->
+      return (str.indexOf suffix, (str.length - suffix.length)) != -1
+
+  class FeatureFormat
+    OneVariable: (name, var1) ->
+      return name + '(' + vari1 + ')\n'
+    TwoVariable: (name, vari1, vari2) ->
+      return name + '(' + vari1 + ',' + vari2 + ')\n'
+
   ### DEFAULT VALUE MASIH BISA DIGANTI TERNYATA AAAA!!! ###
 
   class MySheet
     (null) ->
-      @sheetdict = []
+      @sheetdict = {}
       @mergerowdict = []
       @maxcolnum = 0
       @maxrownum = 0
@@ -41,7 +404,7 @@
       
       mycell = new MyCell value, mtype, indents, alignstyle, boldflag, borderstyle, bgcolor, height, italicflag, underlineflag
 
-      @sheetdict.splice SocialCalc.rcColname(colnum) + rownum, 0, mycell
+      @sheetdict[SocialCalc.rcColname(colnum) + rownum] = mycell
       if mtype == 'str'
           @txt += value + ' '
 
@@ -132,7 +495,7 @@
     (spreadsheet) ->
       @wb = spreadsheet
     LoadSheetDict: ->
-      sheetdict = []
+      sheetdict = {}
       cmysheet = new MySheet
 
       str = ''
@@ -146,7 +509,6 @@
             cStr = cell.datavalue
             cellDType = @GetDataType cell.datatype, cStr
             cellAttr = @wb.sheet.EncodeCellAttributes cellName
-            cellTxt = JSON.stringify @wb.sheet.EncodeCellAttributes cellName
 
             if cellAttr.rowspan.val > 1 or cellAttr.colspan.val > 1
               row1 = rownum
@@ -169,7 +531,7 @@
           str += '([' + cellName + '] ' + indents + ', ' + alignstyle + ', ' + borderstyle + ', ' + bgcolor + ', ' + boldflag + ', ' + height + ', ' + italicflag + ', ' + underlineflag + ')'
         str += '<br/>'        
 
-      sheetdict.splice 'Sheet1', 0, cmysheet ## BELUM BAKAL MAU SUPPORT MULTI-SHEET
+      sheetdict['Sheet1'] = cmysheet ## BELUM BAKAL MAU SUPPORT MULTI-SHEET
       return sheetdict
 
     GetValueType: (type) ->
@@ -283,8 +645,9 @@
 
   window.DatabaseOnClick = !(s, t) ->
     ls = new LoadSheet SocialCalc.GetSpreadsheetControlObject!
+    dictTxt = JSON.stringify ls.LoadSheetDict!
     gview = spreadsheet.views.database.element
-    gview.innerHTML = ls.LoadSheetDict!
+    gview.innerHTML = dictTxt
     return
 
   return

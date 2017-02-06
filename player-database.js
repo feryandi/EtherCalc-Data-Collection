@@ -3,7 +3,7 @@
   this.include = function(){
     return this.client({
       '/player/database.js': function(){
-        var $, SocialCalc, header_div, table_template, MySheet, MyCell, LoadSheet;
+        var $, SocialCalc, header_div, table_template, Feature_SheetRow, FeatureFormat, MySheet, MyCell, LoadSheet;
         $ = window.jQuery || window.$;
         if (!$) {
           return location.reload();
@@ -11,11 +11,486 @@
         SocialCalc = window.SocialCalc || alert('Cannot find window.SocialCalc');
         header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"\" style=\"font-size:x-small;\"></td></tr></table>";
         table_template = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><center><h4>Table 1</h4></center></div><div><table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Range</th><th>Type Validation</th><th>Range Validation</th><th>Relation Validation</th></tr></thead><tr><td><input id=\"%id.t1.databaseLabel1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"%id.t1.databaseData1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><select id=\"%id.t1.databaseTypeV1\" size=\"1\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"><option selected>None</option><option>String</option><option>Integer</option></select></td><td><input id=\"%id.t1.databaseRangeV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"%id.t1.databaseRelationV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td></tr></table></div></div>";
+        Feature_SheetRow = (function(){
+          Feature_SheetRow.displayName = 'Feature_SheetRow';
+          var prototype = Feature_SheetRow.prototype, constructor = Feature_SheetRow;
+          function Feature_SheetRow(){
+            this.naset = ['(na)', 'n/a', '(n/a)', '(x)', '-', '--', 'z', '...'];
+            this.spcharset = ['<', '#', '>', ';', '$'];
+            this.myformat = new FeatureFormat;
+            this.goodrowset = [];
+          }
+          Feature_SheetRow.prototype.GenerateSingularFeatureCrf = function(mysheet, filename, sheetname){
+            var feadict, i$, to$, crow, rowcelldict, j$, to1$, ccol, mycell, blankflag;
+            feadict = {};
+            for (i$ = 0, to$ = mysheet.nrownum - 1; i$ <= to$; ++i$) {
+              crow = i$;
+              rowcelldict = {};
+              for (j$ = 0, to1$ = mysheet.ncolnum - 1; j$ <= to1$; ++j$) {
+                ccol = j$;
+                if (mysheet.sheetdict[SocialCalc.rcColname(colnum) + rownum] !== null) {
+                  mycell = mysheet.sheetdict[SocialCalc.rcColname(colnum) + rownum];
+                  rowcelldict[ccol] = mycell;
+                }
+              }
+              if (rowcelldict.length === 0) {
+                continue;
+              }
+              if (feadict[crow - 1] !== null) {
+                blankflag = false;
+              } else {
+                blankflag = true;
+              }
+              feadict[crow] = this.GenerateFeatureByRowCrf(crow, rowcelldict, mysheet, blankflag);
+            }
+            return feadict;
+          };
+          Feature_SheetRow.prototype.GenerateFeatureByRowCrf = function(crow, rowcelldict, mysheet, blankflag){
+            var feavec, clinetxt;
+            feavec = [];
+            clinetxt = '';
+            rowcelldict.forEach(function(value, i){
+              return clinetxt += value.cstr + ' ';
+            });
+            feavec.push(blankflag);
+            feavec.push(this.FeatureHasMergeCell(crow, mysheet));
+            feavec.push(this.FeatureReachRightBound(crow, rowcelldict, mysheet.maxcolnum));
+            feavec.push(this.FeatureReachLeftBound(rowcelldict));
+            feavec.push(this.FeatureIsOneColumn(rowcelldict));
+            feavec.push(this.FeatureHasCenterAlignCell(crow, rowcelldict));
+            feavec.push(this.FeatureHasLeftAlignCell(crow, rowcelldict));
+            feavec.push(this.FeatureHasBoldFontCell(crow, rowcelldict));
+            feavec.push(this.FeatureIndentation(clinetxt));
+            feavec.push(this.FeatureStartWithTable(clinetxt));
+            feavec.push(this.FeatureStartWithPunctation(clinetxt));
+            feavec.push(this.FeatureNumberPercentHigh(rowcelldict));
+            feavec.push(this.FeatureDigitalPercentHigh(rowcelldict));
+            feavec.push(this.FeatureAlphabetaAllCapital(clinetxt));
+            feavec.push(this.FeatureAlphabetaStartWithCapital(rowcelldict));
+            feavec.push(this.FeatureAlphabetaStartWithLowercase(rowcelldict));
+            feavec.push(this.FeatureAlphabetaCellnumPercentHigh(rowcelldict));
+            feavec.push(this.FeatureAlphabetaPercentHigh(clinetxt));
+            feavec.push(this.FeatureContainSpecialChar(clinetxt));
+            feavec.push(this.FeatureContainColon(clinetxt));
+            feavec.push(this.FeatureYearRangeCellnumHigh(rowcelldict));
+            feavec.push(this.FeatureYearRangePercentHigh(rowcelldict));
+            feavec.push(this.FeatureWordLengthHigh(rowcelldict));
+            return feavec;
+          };
+          Feature_SheetRow.prototype.FeatureOneVariableTxt = function(predicate, rowname, flag){
+            if (flag === true) {
+              return this.myformat.OneVariable(predicate, rowname);
+            }
+            return null;
+          };
+          Feature_SheetRow.prototype.FeatureIsRow = function(rowname){
+            return this.myformat.OneVariable('IsRow', rowname);
+          };
+          Feature_SheetRow.prototype.FeatureWordRepeatHigh = function(clinetxt, csheettxt){
+            var wordarr, reptcount, wordcount, csheetcount, i$, to$, i;
+            wordarr = clinetxt.split(/[^A-Za-z]/);
+            reptcount = 0;
+            wordcount = 0;
+            csheetcount = [];
+            csheettxt.forEach(function(x){
+              csheetcount[x] = (csheetcount[x] || 0) + 1;
+            });
+            for (i$ = 0, to$ = wordarr.length - 1; i$ <= to$; ++i$) {
+              i = i$;
+              if (wordarr[i].length !== 0) {
+                wordcount += 1;
+                reptcount += csheetcount[cword];
+              }
+            }
+            if (wordcount === 0) {
+              return false;
+            }
+            if (float(reptcount) / wordcount >= 2) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureWordLengthHigh = function(rowcelldict){
+            var retVal;
+            if (rowcelldict.length !== 1) {
+              return false;
+            }
+            retVal = false;
+            rowcelldict.forEach(function(value, i){
+              var cval, retVal;
+              cval = value.cstr;
+              if (cval.length > 40) {
+                retVal = true;
+              }
+            });
+            return retVal;
+          };
+          Feature_SheetRow.prototype.FeatureIndentation = function(clinetxt){
+            var i$, to$, i;
+            for (i$ = 0, to$ = clinetxt.length - 1; i$ <= to$; ++i$) {
+              i = i$;
+              if (clinetxt[i] >= 'A' && clinetxt[i] <= 'Z') {
+                break;
+              }
+              if (clinetxt[i] >= 'a' && clinetxt[i] <= 'z') {
+                break;
+              }
+              if (clinetxt[i] >= '0' && clinetxt[i] <= '9') {
+                break;
+              }
+            }
+            if (i > 0) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureHasMergeCell = function(crow, mysheet){
+            if (mysheet.mergerowdict.hasOwnProperty(crow)) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureReachRightBound = function(crow, rowcelldict, ncolnum){
+            if (rowcelldict.hasOwnProperty(ncolnum)) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureReachLeftBound = function(rowcelldict){
+            if (rowcelldict.hasOwnProperty(0)) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureNumberPercentHigh = function(rowcelldict){
+            var digitalcount;
+            if (rowcelldict.length === 0) {
+              return false;
+            }
+            digitalcount = 0;
+            rowcelldict.forEach(function(value, i){
+              var cstr;
+              cstr = value.cstr;
+              if (this.hasDigits(cstr)) {
+                return digitalcount += 1;
+              } else if (this.isNa(cstr)) {
+                return digitalcount += 1;
+              }
+            });
+            if (float(digitalcount) / rowcelldict.length >= 0.6) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureDigitalPercentHigh = function(rowcelldict){
+            var digitalcount;
+            if (rowcelldict.length === 0) {
+              return false;
+            }
+            digitalcount = 0;
+            rowcelldict.forEach(function(value, i){
+              var cstr;
+              cstr = value.cstr;
+              if (this.isNumber(cstr)) {
+                return digitalcount += 1;
+              } else if (this.isNa(cstr)) {
+                return digitalcount += 1;
+              }
+            });
+            if (float(digitalcount) / rowcelldict.length >= 0.6) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureYearRangeCellnumHigh = function(rowcelldict){
+            var yearcount;
+            if (rowcelldict.length === 0) {
+              return false;
+            }
+            yearcount = 0;
+            rowcelldict.forEach(function(value, i){
+              var cstr, digitarr;
+              cstr = value.cstr;
+              digitarr = this.getNumset(cstr);
+              return digitarr.forEach(function(item){
+                if (item >= 1800 && item <= 2300) {
+                  return yearcount += 1;
+                }
+              });
+            });
+            if (yearcount >= 3) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureYearRangePercentHigh = function(rowcelldict){
+            var yearcount, totalcount;
+            if (rowcelldict.length === 0) {
+              return false;
+            }
+            yearcount = 0;
+            totalcount = 1;
+            rowcelldict.forEach(function(value, i){
+              var cstr, digitarr;
+              cstr = value.cstr;
+              digitarr = this.getNumset(cstr);
+              totalcount += digitarr.length;
+              return digitarr.forEach(function(item){
+                if (item >= 1800 && item <= 2300) {
+                  return yearcount += 1;
+                }
+              });
+            });
+            if (float(yearcount) / totalcount >= 0.7) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureAlphabetaStartWithCapital = function(rowcelldict){
+            rowcelldict.forEach(function(value, i){
+              var cstr, mtype;
+              cstr = value.cstr;
+              mtype = value.mtype;
+              if (mtype === 'str' && cstr.length !== 0) {
+                if (this.hasLetter(cstr) && !(cstr.charAt(0) >= 'A' && cstr.charAt(0) <= 'Z')) {
+                  return false;
+                }
+              }
+            });
+            return true;
+          };
+          Feature_SheetRow.prototype.FeatureAlphabetaStartWithLowercase = function(rowcelldict){
+            var ccol, cstr;
+            ccol = -1;
+            rowcelldict.forEach(function(value, i){
+              var ccol;
+              if (ccol === -1 || ccol >= i) {
+                return ccol = i;
+              }
+            });
+            cstr = rowcelldict[ccol].cstr;
+            if (cstr.length === 0) {
+              return false;
+            }
+            if (this.hasLetter(cstr) && (cstr.charAt(0) >= 'a' && cstr.charAt(0) <= 'z')) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureAlphabetaAllCapital = function(clinetxt){
+            var capitalcount, i$, to$, i;
+            capitalcount = 0;
+            for (i$ = 0, to$ = clinetxt.length - 1; i$ <= to$; ++i$) {
+              i = i$;
+              if (clinetxt.charAt(i) >= 'A' && clinetxt.charAt(i) >= 'Z') {
+                capitalcount += 1;
+              } else if (clinetxt.charAt(i) >= 'a' && clinetxt.charAt(i) >= 'z') {
+                return false;
+              }
+            }
+            if (capitalcount > 0) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureAlphabetaCellnumPercentHigh = function(rowcelldict){
+            var count;
+            count = 0;
+            rowcelldict.forEach(function(value, i){
+              var cstr, mtype;
+              cstr = value.cstr;
+              mtype = value.mtype;
+              if (mtype === 'str' && cstr.search(/[A-Za-z]/)) {
+                return count += 1;
+              }
+            });
+            if (float(count) / rowcelldict.length >= 0.6) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureAlphabetaPercentHigh = function(clinetxt){
+            var count, i$, to$, i;
+            count = 0;
+            for (i$ = 0, to$ = clinetxt.length - 1; i$ <= to$; ++i$) {
+              i = i$;
+              if (clinetxt.charAt(i) >= 'A' && clinetxt.charAt(i) <= 'Z') {
+                count += 1;
+              } else if (clinetxt.charAt(i) >= 'a' && clinetxt.charAt(i) <= 'z') {
+                count += 1;
+              }
+            }
+            if (float(count) / clinetxt.length >= 0.6) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureContainColon = function(clinetxt){
+            if (clinetxt.search(':' >= -1)) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureContainSpecialChar = function(clinetxt){
+            var i$, to$, i;
+            for (i$ = 0, to$ = clinetxt.length - 1; i$ <= to$; ++i$) {
+              i = i$;
+              if (clinetxt.charAt(i).search(/[\<#>;$]/ > -1)) {
+                return true;
+              }
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureIsOneColumn = function(rowcelldict){
+            if (rowcelldict.length === 1) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureHasCenterAlignCell = function(crow, rowcelldict){
+            rowcelldict.forEach(function(value, i){
+              if (value.centeralign_flag) {
+                return true;
+              }
+            });
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureHasLeftAlignCell = function(rownum, rowcelldict){
+            rowcelldict.forEach(function(value, i){
+              if (value.leftalign_flag) {
+                return true;
+              }
+            });
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureHasBoldFontCell = function(rownum, rowcelldict){
+            rowcelldict.forEach(function(value, i){
+              if (value.boldflag) {
+                return true;
+              }
+            });
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureStartWithTable = function(clinetxt){
+            if (clinetxt.length === 0) {
+              return false;
+            }
+            if (this.startsWith(clinetxt.trim(), "Table")) {
+              return true;
+            }
+            if (this.startsWith(clinetxt.trim(), "Tabel")) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureStartWithPunctation = function(clinetxt){
+            var cchar;
+            if (clinetxt.length === 0) {
+              return false;
+            }
+            cchar = clinetxt.charAt(0);
+            if (this.hasDigits(cchar)) {
+              return false;
+            }
+            if (this.hasLetter(cchar)) {
+              return false;
+            }
+            return true;
+          };
+          Feature_SheetRow.prototype.FeatureEndWithAnd = function(clinetxt){
+            if (clinetxt.length === 0) {
+              return false;
+            }
+            if (this.endsWith(clinetxt.trim().toLowerCase(), "and")) {
+              return true;
+            }
+            if (this.endsWith(clinetxt.trim(), ",")) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureIsFirstRow = function(rownum){
+            if (rownum === 0) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.FeatureIsLastRow = function(rownum, maxrownum){
+            if (rownum === maxrownum) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.isNumber = function(cstr){
+            return !isNaN(cstr);
+          };
+          Feature_SheetRow.prototype.hasLetter = function(cstr){
+            if (cstr.match(/[A-Za-z]/)) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.hasDigits = function(cstr){
+            if (cstr.match(/[0-9]/)) {
+              return true;
+            }
+            return false;
+          };
+          Feature_SheetRow.prototype.isNa = function(cstr){
+            this.naset.forEach(function(value){
+              if (cstr === value) {
+                return true;
+              }
+            });
+            return false;
+          };
+          Feature_SheetRow.prototype.getNumset = function(cstr){
+            var carr, numset;
+            carr = cstr.split(' ');
+            numset = [];
+            carr.forEach(function(value){
+              if (this.isNumber(value)) {
+                return numset.push(item);
+              }
+            });
+            return numset;
+          };
+          Feature_SheetRow.prototype.getRowname = function(filename, csheetname, rownum){
+            var pfilename, psheetname;
+            pfilename = filename.replace('.', '_');
+            psheetname = csheetname.replace(' ', '_');
+            return 'S' + pfilename + '____' + psheetname + '____' + rownum;
+          };
+          Feature_SheetRow.prototype.parseFilename = function(filepath){
+            var iarr;
+            iarr = filepath.split('/');
+            return iarr[iarr.length - 1];
+          };
+          Feature_SheetRow.prototype.startsWith = function(str, prefix){
+            return str.indexOf(prefix) === 0;
+          };
+          Feature_SheetRow.prototype.endsWith = function(str, suffix){
+            return str.indexOf(suffix, str.length - suffix.length) !== -1;
+          };
+          return Feature_SheetRow;
+        }());
+        FeatureFormat = (function(){
+          FeatureFormat.displayName = 'FeatureFormat';
+          var prototype = FeatureFormat.prototype, constructor = FeatureFormat;
+          FeatureFormat.prototype.OneVariable = function(name, var1){
+            return name + '(' + vari1 + ')\n';
+          };
+          FeatureFormat.prototype.TwoVariable = function(name, vari1, vari2){
+            return name + '(' + vari1 + ',' + vari2 + ')\n';
+          };
+          function FeatureFormat(){}
+          return FeatureFormat;
+        }());
         MySheet = (function(){
           MySheet.displayName = 'MySheet';
           var prototype = MySheet.prototype, constructor = MySheet;
           function MySheet(){
-            this.sheetdict = [];
+            this.sheetdict = {};
             this.mergerowdict = [];
             this.maxcolnum = 0;
             this.maxrownum = 0;
@@ -48,7 +523,7 @@
               this.maxcolnum = colnum;
             }
             mycell = new MyCell(value, mtype, indents, alignstyle, boldflag, borderstyle, bgcolor, height, italicflag, underlineflag);
-            this.sheetdict.splice(SocialCalc.rcColname(colnum) + rownum, 0, mycell);
+            this.sheetdict[SocialCalc.rcColname(colnum) + rownum] = mycell;
             if (mtype === 'str') {
               return this.txt += value + ' ';
             }
@@ -158,8 +633,8 @@
             this.wb = spreadsheet;
           }
           LoadSheet.prototype.LoadSheetDict = function(){
-            var sheetdict, cmysheet, str, i$, to$, rownum, j$, to1$, colnum, cellName, cell, cellType, cStr, cellDType, cellAttr, cellTxt, row1, row2, col1, col2, indents, alignstyle, borderstyle, bgcolor, boldflag, height, italicflag, underlineflag;
-            sheetdict = [];
+            var sheetdict, cmysheet, str, i$, to$, rownum, j$, to1$, colnum, cellName, cell, cellType, cStr, cellDType, cellAttr, row1, row2, col1, col2, indents, alignstyle, borderstyle, bgcolor, boldflag, height, italicflag, underlineflag;
+            sheetdict = {};
             cmysheet = new MySheet;
             str = '';
             for (i$ = 1, to$ = this.wb.sheet.LastRow(); i$ <= to$; ++i$) {
@@ -173,7 +648,6 @@
                   cStr = cell.datavalue;
                   cellDType = this.GetDataType(cell.datatype, cStr);
                   cellAttr = this.wb.sheet.EncodeCellAttributes(cellName);
-                  cellTxt = JSON.stringify(this.wb.sheet.EncodeCellAttributes(cellName));
                   if (cellAttr.rowspan.val > 1 || cellAttr.colspan.val > 1) {
                     row1 = rownum;
                     row2 = rownum + cellAttr.rowspan.val - 1;
@@ -195,7 +669,7 @@
               }
               str += '<br/>';
             }
-            sheetdict.splice('Sheet1', 0, cmysheet);
+            sheetdict['Sheet1'] = cmysheet;
             return sheetdict;
           };
           LoadSheet.prototype.GetValueType = function(type){
@@ -358,10 +832,11 @@
           return LoadSheet;
         }());
         window.DatabaseOnClick = function(s, t){
-          var ls, gview;
+          var ls, dictTxt, gview;
           ls = new LoadSheet(SocialCalc.GetSpreadsheetControlObject());
+          dictTxt = JSON.stringify(ls.LoadSheetDict());
           gview = spreadsheet.views.database.element;
-          gview.innerHTML = ls.LoadSheetDict();
+          gview.innerHTML = dictTxt;
           return;
         };
       }
