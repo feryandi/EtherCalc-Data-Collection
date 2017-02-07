@@ -7,24 +7,47 @@
 
   table_template = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><center><h4>Table 1</h4></center></div><div><table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Range</th><th>Type Validation</th><th>Range Validation</th><th>Relation Validation</th></tr></thead><tr><td><input id=\"%id.t1.databaseLabel1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"%id.t1.databaseData1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><select id=\"%id.t1.databaseTypeV1\" size=\"1\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"><option selected>None</option><option>String</option><option>Integer</option></select></td><td><input id=\"%id.t1.databaseRangeV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"%id.t1.databaseRelationV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td></tr></table></div></div>"
 
-  class Feature_SheetRow
+  class PredictSheetRows
+    (null) ->
+      @fea_row = new FeatureSheetRow
+
+    GenerateFromSheetFile: ->
+      strout = ''
+      loadsheet = new LoadSheet SocialCalc.GetSpreadsheetControlObject!
+      sheetdict = loadsheet.LoadSheetDict!
+
+      for own let sheetname, mysheet of sheetdict
+        feadict = @fea_row.GenerateSingularFeatureCrf mysheet, sheetname
+
+        for own let row, feavec of feadict
+          strout += 'ROW ' + row + ' <br/>'
+          feavec.forEach (item) ->
+            if item == true
+              strout += '1'
+            else
+              strout += '0'
+          strout += 'Title<br/>'
+      return strout
+
+
+  class FeatureSheetRow
     (null) ->
       @naset = ['(na)', 'n/a', '(n/a)', '(x)', '-', '--', 'z', '...']
       @spcharset = ['<', '#', '>', ';', '$'] #notused because using regex
       @myformat = new FeatureFormat
       @goodrowset = []
 
-    GenerateSingularFeatureCrf: (mysheet, filename, sheetname) ->
+    GenerateSingularFeatureCrf: (mysheet, sheetname) ->
       feadict = {}
-      for crow from 0 to mysheet.nrownum-1
+      for crow from 1 to mysheet.nrownum
         rowcelldict = {}
-        for ccol from 0 to mysheet.ncolnum-1
-          if mysheet.sheetdict[SocialCalc.rcColname(colnum) + rownum] != null ###MASIH RAGU DISINI BENER?
-            mycell = mysheet.sheetdict[SocialCalc.rcColname(colnum) + rownum]
+        for ccol to mysheet.ncolnum-1
+          if mysheet.sheetdict.hasOwnProperty SocialCalc.rcColname(ccol) + crow
+            mycell = mysheet.sheetdict[SocialCalc.rcColname(ccol) + crow]
             rowcelldict[ccol] = mycell
         if rowcelldict.length == 0
           continue
-        if feadict[crow - 1] != null ###MASIH RAGU DISINI BENER?
+        if feadict.hasOwnProperty crow - 1
           blankflag = false
         else
           blankflag = true
@@ -35,7 +58,7 @@
       feavec = []        
       clinetxt = ''
 
-      rowcelldict.forEach (value, i) ->
+      for own let key, value of rowcelldict
         clinetxt += value.cstr + ' '      
 
       # layout features
@@ -93,7 +116,7 @@
           reptcount += csheetcount[cword]
       if wordcount == 0
         return false
-      if float(reptcount)/wordcount >= 2
+      if reptcount/wordcount >= 2
         return true
       return false
 
@@ -101,7 +124,7 @@
       if rowcelldict.length != 1
         return false
       retVal = false
-      rowcelldict.forEach (value, i) ->
+      for own let key, value of rowcelldict
         cval = value.cstr
         if cval.length > 40
           retVal = true
@@ -139,13 +162,13 @@
       if rowcelldict.length == 0
         return false
       digitalcount = 0
-      rowcelldict.forEach (value, i) ->
+      for own let key, value of rowcelldict
         cstr = value.cstr
         if @hasDigits cstr
           digitalcount += 1
         else if @isNa cstr
           digitalcount += 1
-      if float(digitalcount)/(rowcelldict).length >= 0.6
+      if digitalcount/(rowcelldict).length >= 0.6
           return true
       return false
 
@@ -153,13 +176,13 @@
       if rowcelldict.length == 0
         return false
       digitalcount = 0
-      rowcelldict.forEach (value, i) ->
+      for own let key, value of rowcelldict
         cstr = value.cstr
         if @isNumber cstr
           digitalcount += 1
         else if @isNa cstr
           digitalcount += 1
-      if float(digitalcount)/(rowcelldict).length >= 0.6
+      if digitalcount/(rowcelldict).length >= 0.6
           return true
       return false
 
@@ -167,7 +190,7 @@
       if rowcelldict.length == 0
         return false
       yearcount = 0
-      rowcelldict.forEach (value, i) ->
+      for own let key, value of rowcelldict
         cstr = value.cstr
         digitarr = @getNumset cstr
         digitarr.forEach (item) ->
@@ -182,19 +205,19 @@
         return false
       yearcount = 0
       totalcount = 1
-      rowcelldict.forEach (value, i) ->
+      for own let key, value of rowcelldict
         cstr = value.cstr
         digitarr = @getNumset cstr
         totalcount += digitarr.length
         digitarr.forEach (item) ->
           if item >= 1800 and item <= 2300
             yearcount += 1
-      if float(yearcount)/totalcount >= 0.7
+      if yearcount/totalcount >= 0.7
         return true
       return false
 
     FeatureAlphabetaStartWithCapital: (rowcelldict) ->
-      rowcelldict.forEach (value, i) ->
+      for own let key, value of rowcelldict
         cstr = value.cstr
         mtype = value.mtype
         if mtype == 'str' and cstr.length != 0
@@ -203,10 +226,8 @@
       return true
       
     FeatureAlphabetaStartWithLowercase: (rowcelldict) ->
-      ccol = -1
-      rowcelldict.forEach (value, i) ->
-        if ccol == -1 or ccol >= i
-          ccol = i
+      keys = Object.keys rowcelldict
+      ccol = Math.min.apply null, keys
       cstr = rowcelldict[ccol].cstr
 
       if cstr.length == 0
@@ -228,12 +249,12 @@
     
     FeatureAlphabetaCellnumPercentHigh: (rowcelldict) ->
       count = 0
-      rowcelldict.forEach (value, i) ->
+      for own let key, value of rowcelldict
         cstr = value.cstr
         mtype = value.mtype
         if mtype == 'str' and cstr.search(/[A-Za-z]/)
           count += 1
-      if float(count)/(rowcelldict.length) >= 0.6
+      if count/(rowcelldict.length) >= 0.6
         return true
       return false
      
@@ -244,7 +265,7 @@
           count += 1
         else if (clinetxt.charAt i) >= 'a' and (clinetxt.charAt i) <= 'z'
           count += 1
-      if float(count)/clinetxt.length >= 0.6
+      if count/clinetxt.length >= 0.6
         return true
       return false
 
@@ -265,19 +286,19 @@
       return false
 
     FeatureHasCenterAlignCell: (crow, rowcelldict) ->
-      rowcelldict.forEach (value, i) ->
+      for own let key, value of rowcelldict
         if value.centeralign_flag
           return true
       return false
     
     FeatureHasLeftAlignCell: (rownum, rowcelldict) ->
-      rowcelldict.forEach (value, i) ->
+      for own let key, value of rowcelldict
         if value.leftalign_flag
           return true
       return false
 
     FeatureHasBoldFontCell: (rownum, rowcelldict) ->
-      rowcelldict.forEach (value, i) ->
+      for own let key, value of rowcelldict
         if value.boldflag
           return true
       return false
@@ -326,12 +347,12 @@
       return !(isNaN cstr)
 
     hasLetter: (cstr) ->
-      if cstr.match /[A-Za-z]/
+      if String(cstr).match /[A-Za-z]/
         return true
       return false
 
     hasDigits: (cstr) ->
-      if cstr.match /[0-9]/
+      if String(cstr).match /[0-9]/
         return true
       return false
     
@@ -342,11 +363,11 @@
       return false
     
     getNumset: (cstr) ->
-      carr = cstr.split(' ')
+      carr = String(cstr).split(' ')
       numset = []
       carr.forEach (value) ->
-        if @isNumber value
-          numset.push(item)
+        if !(isNaN value)
+          numset.push(value)
       return numset
 
     getRowname: (filename, csheetname, rownum) ->
@@ -644,8 +665,8 @@
       return str
 
   window.DatabaseOnClick = !(s, t) ->
-    ls = new LoadSheet SocialCalc.GetSpreadsheetControlObject!
-    dictTxt = JSON.stringify ls.LoadSheetDict!
+    pr = new PredictSheetRows
+    dictTxt = JSON.stringify pr.GenerateFromSheetFile!
     gview = spreadsheet.views.database.element
     gview.innerHTML = dictTxt
     return
