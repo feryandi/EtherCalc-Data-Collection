@@ -20,12 +20,13 @@
         feadict = @fea_row.GenerateSingularFeatureCrf mysheet, sheetname
 
         for own let row, feavec of feadict
-          strout += 'ROW ' + row + ' <br/>'
+          numrow = row - 1
+          strout += numrow + ' '
           feavec.forEach (item) ->
             if item == true
-              strout += '1'
+              strout += '1 '
             else
-              strout += '0'
+              strout += '0 '
           strout += 'Title<br/>'
       return strout
 
@@ -41,17 +42,17 @@
       feadict = {}
       for crow from 1 to mysheet.nrownum
         rowcelldict = {}
-        for ccol to mysheet.ncolnum-1
-          if mysheet.sheetdict.hasOwnProperty SocialCalc.rcColname(ccol) + crow
+        for ccol from 1 to mysheet.ncolnum
+          if (mysheet.sheetdict[SocialCalc.rcColname(ccol) + crow]) != undefined
             mycell = mysheet.sheetdict[SocialCalc.rcColname(ccol) + crow]
-            rowcelldict[ccol] = mycell
-        if rowcelldict.length == 0
-          continue
-        if feadict.hasOwnProperty crow - 1
-          blankflag = false
-        else
-          blankflag = true
-        feadict[crow] = @GenerateFeatureByRowCrf crow, rowcelldict, mysheet, blankflag
+            rowcelldict[ccol-1] = mycell
+            #console.log("(" + SocialCalc.rcColname(ccol) + crow + ")[" + (ccol-1) + "] ~ " + rowcelldict[ccol-1].cstr)
+        if Object.keys(rowcelldict).length != 0
+          if feadict.hasOwnProperty crow - 1
+            blankflag = false
+          else
+            blankflag = true
+          feadict[crow] = @GenerateFeatureByRowCrf crow, rowcelldict, mysheet, blankflag
       return feadict
 
     GenerateFeatureByRowCrf: (crow, rowcelldict, mysheet, blankflag) ->
@@ -62,30 +63,30 @@
         clinetxt += value.cstr + ' '      
 
       # layout features
-      feavec.push blankflag
-      feavec.push @FeatureHasMergeCell crow, mysheet
-      feavec.push @FeatureReachRightBound crow, rowcelldict, mysheet.maxcolnum
-      feavec.push @FeatureReachLeftBound rowcelldict
-      feavec.push @FeatureIsOneColumn rowcelldict
-      feavec.push @FeatureHasCenterAlignCell crow, rowcelldict
-      feavec.push @FeatureHasLeftAlignCell crow, rowcelldict
-      feavec.push @FeatureHasBoldFontCell crow, rowcelldict
-      feavec.push @FeatureIndentation clinetxt
+      feavec.push blankflag #1
+      feavec.push @FeatureHasMergeCell crow, mysheet #2
+      feavec.push @FeatureReachRightBound crow, rowcelldict, mysheet.maxcolnum #3
+      feavec.push @FeatureReachLeftBound rowcelldict #4
+      feavec.push @FeatureIsOneColumn rowcelldict #5
+      feavec.push @FeatureHasCenterAlignCell crow, rowcelldict #6
+      feavec.push @FeatureHasLeftAlignCell crow, rowcelldict #7
+      feavec.push @FeatureHasBoldFontCell crow, rowcelldict #8
+      feavec.push @FeatureIndentation clinetxt #9
       # textual features
-      feavec.push @FeatureStartWithTable clinetxt
-      feavec.push @FeatureStartWithPunctation clinetxt
-      feavec.push @FeatureNumberPercentHigh rowcelldict
-      feavec.push @FeatureDigitalPercentHigh rowcelldict
-      feavec.push @FeatureAlphabetaAllCapital clinetxt
-      feavec.push @FeatureAlphabetaStartWithCapital rowcelldict
-      feavec.push @FeatureAlphabetaStartWithLowercase rowcelldict
-      feavec.push @FeatureAlphabetaCellnumPercentHigh rowcelldict
-      feavec.push @FeatureAlphabetaPercentHigh clinetxt
-      feavec.push @FeatureContainSpecialChar clinetxt
-      feavec.push @FeatureContainColon clinetxt
-      feavec.push @FeatureYearRangeCellnumHigh rowcelldict
-      feavec.push @FeatureYearRangePercentHigh rowcelldict
-      feavec.push @FeatureWordLengthHigh rowcelldict      
+      feavec.push @FeatureStartWithTable clinetxt #10
+      feavec.push @FeatureStartWithPunctation clinetxt #11
+      feavec.push @FeatureNumberPercentHigh rowcelldict #12
+      feavec.push @FeatureDigitalPercentHigh rowcelldict #13
+      feavec.push @FeatureAlphabetaAllCapital clinetxt #14
+      feavec.push @FeatureAlphabetaStartWithCapital rowcelldict #15
+      feavec.push @FeatureAlphabetaStartWithLowercase rowcelldict #16
+      feavec.push @FeatureAlphabetaCellnumPercentHigh rowcelldict #17
+      feavec.push @FeatureAlphabetaPercentHigh clinetxt #18
+      feavec.push @FeatureContainSpecialChar clinetxt #19
+      feavec.push @FeatureContainColon clinetxt #20
+      feavec.push @FeatureYearRangeCellnumHigh rowcelldict #21
+      feavec.push @FeatureYearRangePercentHigh rowcelldict #22
+      feavec.push @FeatureWordLengthHigh rowcelldict #23!!!!!!
       return feavec
 
     FeatureOneVariableTxt: (predicate, rowname, flag) ->
@@ -121,15 +122,15 @@
       return false
 
     FeatureWordLengthHigh: (rowcelldict) ->
-      if rowcelldict.length != 1
+      if Object.keys(rowcelldict).length != 1
         return false
-      retVal = false
+      this.retVal = false
       for own let key, value of rowcelldict
         cval = value.cstr
         if cval.length > 40
-          retVal = true
+          this.retVal = true
         return
-      return retVal
+      return this.retVal
 
     FeatureIndentation: (clinetxt) ->
       for i from 0 to clinetxt.length-1
@@ -144,75 +145,75 @@
       return false
 
     FeatureHasMergeCell: (crow, mysheet) ->      
-      if mysheet.mergerowdict.hasOwnProperty crow
+      if mysheet.mergerowdict[crow] != undefined
         return true
       return false
 
     FeatureReachRightBound: (crow, rowcelldict, ncolnum) ->
-      if rowcelldict.hasOwnProperty ncolnum
+      if rowcelldict[ncolnum-1] != undefined
         return true
       return false
     
     FeatureReachLeftBound: (rowcelldict) ->
-      if rowcelldict.hasOwnProperty 0
+      if rowcelldict[0] != undefined
         return true
       return false
 
     FeatureNumberPercentHigh: (rowcelldict) ->
-      if rowcelldict.length == 0
+      if Object.keys(rowcelldict).length == 0
         return false
-      digitalcount = 0
+      this.digitalcount = 0
       for own let key, value of rowcelldict
         cstr = value.cstr
         if @hasDigits cstr
-          digitalcount += 1
+          this.digitalcount += 1
         else if @isNa cstr
-          digitalcount += 1
-      if digitalcount/(rowcelldict).length >= 0.6
+          this.digitalcount += 1
+      if this.digitalcount/(Object.keys(rowcelldict).length) >= 0.6
           return true
       return false
 
     FeatureDigitalPercentHigh: (rowcelldict) ->
-      if rowcelldict.length == 0
+      if Object.keys(rowcelldict).length == 0
         return false
-      digitalcount = 0
+      this.digitalcount = 0
       for own let key, value of rowcelldict
         cstr = value.cstr
         if @isNumber cstr
-          digitalcount += 1
+          this.digitalcount += 1
         else if @isNa cstr
-          digitalcount += 1
-      if digitalcount/(rowcelldict).length >= 0.6
+          this.digitalcount += 1
+      if this.digitalcount/(Object.keys(rowcelldict).length) >= 0.6
           return true
       return false
 
     FeatureYearRangeCellnumHigh: (rowcelldict) ->
-      if rowcelldict.length == 0
+      if Object.keys(rowcelldict).length == 0
         return false
-      yearcount = 0
+      this.yearcount = 0
       for own let key, value of rowcelldict
         cstr = value.cstr
         digitarr = @getNumset cstr
-        digitarr.forEach (item) ->
-          if item >= 1800 and item <= 2300
-            yearcount += 1
-      if yearcount >= 3
+        for i from 0 to digitarr.length-1
+          if (digitarr[i] >= 1800) and (digitarr[i] <= 2300)
+            this.yearcount += 1
+      if this.yearcount >= 3
         return true
       return false
 
     FeatureYearRangePercentHigh: (rowcelldict) ->
-      if rowcelldict.length == 0
+      if Object.keys(rowcelldict).length == 0
         return false
-      yearcount = 0
-      totalcount = 1
+      this.yearcount = 0
+      this.totalcount = 1
       for own let key, value of rowcelldict
         cstr = value.cstr
         digitarr = @getNumset cstr
-        totalcount += digitarr.length
-        digitarr.forEach (item) ->
-          if item >= 1800 and item <= 2300
-            yearcount += 1
-      if yearcount/totalcount >= 0.7
+        this.totalcount += digitarr.length
+        for i from 0 to digitarr.length-1          
+          if (digitarr[i] >= 1800) and (digitarr[i] <= 2300)
+            this.yearcount += 1
+      if this.yearcount/this.totalcount >= 0.7
         return true
       return false
 
@@ -239,22 +240,22 @@
     FeatureAlphabetaAllCapital: (clinetxt) ->
       capitalcount = 0
       for i from 0 to clinetxt.length-1
-        if (clinetxt.charAt i) >= 'A' and (clinetxt.charAt i) >= 'Z'
+        if (clinetxt.charAt i) >= 'A' and (clinetxt.charAt i) <= 'Z'
           capitalcount += 1
-        else if (clinetxt.charAt i) >= 'a' and (clinetxt.charAt i) >= 'z'
+        else if (clinetxt.charAt i) >= 'a' and (clinetxt.charAt i) <= 'z'
           return false
       if capitalcount > 0
         return true
       return false
     
     FeatureAlphabetaCellnumPercentHigh: (rowcelldict) ->
-      count = 0
+      this.count = 0
       for own let key, value of rowcelldict
         cstr = value.cstr
         mtype = value.mtype
-        if mtype == 'str' and cstr.search(/[A-Za-z]/)
-          count += 1
-      if count/(rowcelldict.length) >= 0.6
+        if mtype == 'str' and (String(cstr).search(/[A-Za-z]/) == 0)
+          this.count += 1
+      if this.count/(Object.keys(rowcelldict).length) >= 0.6
         return true
       return false
      
@@ -270,38 +271,43 @@
       return false
 
     FeatureContainColon: (clinetxt) ->
-      if clinetxt.search ':' >= -1
+      check = parseInt(String(clinetxt).search ':')
+      if check > -1
         return true
       return false
 
     FeatureContainSpecialChar: (clinetxt) ->
       for i from 0 to clinetxt.length-1
-        if (clinetxt.charAt i).search /[\<#>;$]/ > -1
+        check = parseInt(String(clinetxt.charAt i).search /[\<#>;$]/)
+        if check > -1
           return true
       return false
     
     FeatureIsOneColumn: (rowcelldict) ->
-      if rowcelldict.length == 1
+      if Object.keys(rowcelldict).length == 1
         return true
       return false
 
     FeatureHasCenterAlignCell: (crow, rowcelldict) ->
+      this.ret = false
       for own let key, value of rowcelldict
         if value.centeralign_flag
-          return true
-      return false
+          this.ret = true
+      return this.ret
     
     FeatureHasLeftAlignCell: (rownum, rowcelldict) ->
+      this.ret = false
       for own let key, value of rowcelldict
         if value.leftalign_flag
-          return true
-      return false
+          this.ret = true
+      return this.ret
 
     FeatureHasBoldFontCell: (rownum, rowcelldict) ->
+      this.ret = false
       for own let key, value of rowcelldict
         if value.boldflag
-          return true
-      return false
+          this.ret = true
+      return this.ret
 
     FeatureStartWithTable: (clinetxt) ->
       if clinetxt.length == 0
@@ -440,11 +446,11 @@
       @rightalign_flag = false
 
       if alignstyle == 1
-          @leftalign_flag = true
+        @leftalign_flag = true
       else if alignstyle == 2
-          @centeralign_flag = true
+        @centeralign_flag = true
       else if alignstyle == 3
-          @rightalign_flag = true
+        @rightalign_flag = true
       
       @boldflag = false
       if boldflag == 1
@@ -538,21 +544,20 @@
               col2 = colnum + cellAttr.colspan.val - 1
               cmysheet.AddMergeCell row1, row2, col1, col2
 
-            indents = parseInt @FeatureIndentation cellAttr
-            alignstyle = parseInt @FeatureAlignStyle cellAttr                
-            borderstyle = @FeatureBorderStyle cellAttr
-            bgcolor = @FeatureFontBgcolor cellAttr
-            boldflag = parseInt @FeatureFontBold cellAttr
-            height = parseInt @FeatureFontHeight cellAttr
-            italicflag = parseInt @FeatureFontItalic cellAttr
-            underlineflag = parseInt @FeatureFontUnderline cellAttr
+            if cellDType != null
+              indents = parseInt @FeatureIndentation cellAttr
+              alignstyle = parseInt @FeatureAlignStyle cellAttr
+              borderstyle = @FeatureBorderStyle cellAttr
+              bgcolor = @FeatureFontBgcolor cellAttr
+              boldflag = parseInt @FeatureFontBold cellAttr
+              height = parseInt @FeatureFontHeight cellAttr
+              italicflag = parseInt @FeatureFontItalic cellAttr
+              underlineflag = parseInt @FeatureFontUnderline cellAttr
 
-            cmysheet.InsertCell rownum, colnum, @wb.sheet.LastRow!, @wb.sheet.LastCol!, cellType, indents, alignstyle, borderstyle, bgcolor, boldflag, height, italicflag, underlineflag, cStr
-
-          str += '([' + cellName + '] ' + indents + ', ' + alignstyle + ', ' + borderstyle + ', ' + bgcolor + ', ' + boldflag + ', ' + height + ', ' + italicflag + ', ' + underlineflag + ')'
-        str += '<br/>'        
+              cmysheet.InsertCell rownum, colnum, @wb.sheet.LastRow!, @wb.sheet.LastCol!, cellDType, indents, alignstyle, borderstyle, bgcolor, boldflag, height, italicflag, underlineflag, cStr
 
       sheetdict['Sheet1'] = cmysheet ## BELUM BAKAL MAU SUPPORT MULTI-SHEET
+      #TADI SIH OK, DENGAN JIKA CELL TSB KOSONG MAKA DILEWAT
       return sheetdict
 
     GetValueType: (type) ->
@@ -567,15 +572,17 @@
       return ct
 
     GetDataType: (type, value) ->
+      dtype = null
       switch type
-        case 't' then type = 'str'
+        case 't' then dtype = 'str'
         case 'v' 
           if value % 1 == 0
-            type = 'int'
+            dtype = 'int'
           else 
-            type = 'float'
-        case 'c' then type = 'str'
-      return type
+            dtype = 'float'
+        case 'c' then dtype = 'str'
+        default dtype = null
+      return dtype
 
     FeatureIndentation: (cellAttr) ->
       ## Karena sepertinya ga bisa pake tab, lihat padding
@@ -598,6 +605,7 @@
           case 'left' then return '1'
           case 'center' then return '2'
           case 'right' then return '3'
+          default return '1'
 
     FeatureFontBold: (cellAttr) ->
       if cellAttr.fontlook.def

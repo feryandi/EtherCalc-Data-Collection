@@ -33,12 +33,14 @@
                 (fn$.call(this, i$, feadict[i$]));
               }
               function fn$(row, feavec){
-                strout += 'ROW ' + row + ' <br/>';
+                var numrow;
+                numrow = row - 1;
+                strout += numrow + ' ';
                 feavec.forEach(function(item){
                   if (item === true) {
-                    return strout += '1';
+                    return strout += '1 ';
                   } else {
-                    return strout += '0';
+                    return strout += '0 ';
                   }
                 });
                 strout += 'Title<br/>';
@@ -62,22 +64,21 @@
             for (i$ = 1, to$ = mysheet.nrownum; i$ <= to$; ++i$) {
               crow = i$;
               rowcelldict = {};
-              for (j$ = 0, to1$ = mysheet.ncolnum - 1; j$ <= to1$; ++j$) {
+              for (j$ = 1, to1$ = mysheet.ncolnum; j$ <= to1$; ++j$) {
                 ccol = j$;
-                if (mysheet.sheetdict.hasOwnProperty(SocialCalc.rcColname(ccol) + crow)) {
+                if (mysheet.sheetdict[SocialCalc.rcColname(ccol) + crow] !== undefined) {
                   mycell = mysheet.sheetdict[SocialCalc.rcColname(ccol) + crow];
-                  rowcelldict[ccol] = mycell;
+                  rowcelldict[ccol - 1] = mycell;
                 }
               }
-              if (rowcelldict.length === 0) {
-                continue;
+              if (Object.keys(rowcelldict).length !== 0) {
+                if (feadict.hasOwnProperty(crow - 1)) {
+                  blankflag = false;
+                } else {
+                  blankflag = true;
+                }
+                feadict[crow] = this.GenerateFeatureByRowCrf(crow, rowcelldict, mysheet, blankflag);
               }
-              if (feadict.hasOwnProperty(crow - 1)) {
-                blankflag = false;
-              } else {
-                blankflag = true;
-              }
-              feadict[crow] = this.GenerateFeatureByRowCrf(crow, rowcelldict, mysheet, blankflag);
             }
             return feadict;
           };
@@ -150,20 +151,20 @@
             return false;
           };
           FeatureSheetRow.prototype.FeatureWordLengthHigh = function(rowcelldict){
-            var retVal, i$, own$ = {}.hasOwnProperty;
-            if (rowcelldict.length !== 1) {
+            var i$, own$ = {}.hasOwnProperty;
+            if (Object.keys(rowcelldict).length !== 1) {
               return false;
             }
-            retVal = false;
+            this.retVal = false;
             for (i$ in rowcelldict) if (own$.call(rowcelldict, i$)) {
               (fn$.call(this, i$, rowcelldict[i$]));
             }
-            return retVal;
+            return this.retVal;
             function fn$(key, value){
-              var cval, retVal;
+              var cval;
               cval = value.cstr;
               if (cval.length > 40) {
-                retVal = true;
+                this.retVal = true;
               }
               return;
             }
@@ -188,33 +189,33 @@
             return false;
           };
           FeatureSheetRow.prototype.FeatureHasMergeCell = function(crow, mysheet){
-            if (mysheet.mergerowdict.hasOwnProperty(crow)) {
+            if (mysheet.mergerowdict[crow] !== undefined) {
               return true;
             }
             return false;
           };
           FeatureSheetRow.prototype.FeatureReachRightBound = function(crow, rowcelldict, ncolnum){
-            if (rowcelldict.hasOwnProperty(ncolnum)) {
+            if (rowcelldict[ncolnum - 1] !== undefined) {
               return true;
             }
             return false;
           };
           FeatureSheetRow.prototype.FeatureReachLeftBound = function(rowcelldict){
-            if (rowcelldict.hasOwnProperty(0)) {
+            if (rowcelldict[0] !== undefined) {
               return true;
             }
             return false;
           };
           FeatureSheetRow.prototype.FeatureNumberPercentHigh = function(rowcelldict){
-            var digitalcount, i$, own$ = {}.hasOwnProperty;
-            if (rowcelldict.length === 0) {
+            var i$, own$ = {}.hasOwnProperty;
+            if (Object.keys(rowcelldict).length === 0) {
               return false;
             }
-            digitalcount = 0;
+            this.digitalcount = 0;
             for (i$ in rowcelldict) if (own$.call(rowcelldict, i$)) {
               (fn$.call(this, i$, rowcelldict[i$]));
             }
-            if (digitalcount / rowcelldict.length >= 0.6) {
+            if (this.digitalcount / Object.keys(rowcelldict).length >= 0.6) {
               return true;
             }
             return false;
@@ -222,22 +223,22 @@
               var cstr;
               cstr = value.cstr;
               if (this.hasDigits(cstr)) {
-                digitalcount += 1;
+                this.digitalcount += 1;
               } else if (this.isNa(cstr)) {
-                digitalcount += 1;
+                this.digitalcount += 1;
               }
             }
           };
           FeatureSheetRow.prototype.FeatureDigitalPercentHigh = function(rowcelldict){
-            var digitalcount, i$, own$ = {}.hasOwnProperty;
-            if (rowcelldict.length === 0) {
+            var i$, own$ = {}.hasOwnProperty;
+            if (Object.keys(rowcelldict).length === 0) {
               return false;
             }
-            digitalcount = 0;
+            this.digitalcount = 0;
             for (i$ in rowcelldict) if (own$.call(rowcelldict, i$)) {
               (fn$.call(this, i$, rowcelldict[i$]));
             }
-            if (digitalcount / rowcelldict.length >= 0.6) {
+            if (this.digitalcount / Object.keys(rowcelldict).length >= 0.6) {
               return true;
             }
             return false;
@@ -245,60 +246,62 @@
               var cstr;
               cstr = value.cstr;
               if (this.isNumber(cstr)) {
-                digitalcount += 1;
+                this.digitalcount += 1;
               } else if (this.isNa(cstr)) {
-                digitalcount += 1;
+                this.digitalcount += 1;
               }
             }
           };
           FeatureSheetRow.prototype.FeatureYearRangeCellnumHigh = function(rowcelldict){
-            var yearcount, i$, own$ = {}.hasOwnProperty;
-            if (rowcelldict.length === 0) {
+            var i$, own$ = {}.hasOwnProperty;
+            if (Object.keys(rowcelldict).length === 0) {
               return false;
             }
-            yearcount = 0;
+            this.yearcount = 0;
             for (i$ in rowcelldict) if (own$.call(rowcelldict, i$)) {
               (fn$.call(this, i$, rowcelldict[i$]));
             }
-            if (yearcount >= 3) {
+            if (this.yearcount >= 3) {
               return true;
             }
             return false;
             function fn$(key, value){
-              var cstr, digitarr;
+              var cstr, digitarr, i$, to$, i;
               cstr = value.cstr;
               digitarr = this.getNumset(cstr);
-              digitarr.forEach(function(item){
-                if (item >= 1800 && item <= 2300) {
-                  return yearcount += 1;
+              for (i$ = 0, to$ = digitarr.length - 1; i$ <= to$; ++i$) {
+                i = i$;
+                if (digitarr[i] >= 1800 && digitarr[i] <= 2300) {
+                  this.yearcount += 1;
                 }
-              });
+              }
             }
           };
           FeatureSheetRow.prototype.FeatureYearRangePercentHigh = function(rowcelldict){
-            var yearcount, totalcount, i$, own$ = {}.hasOwnProperty;
-            if (rowcelldict.length === 0) {
+            var i$, own$ = {}.hasOwnProperty;
+            if (Object.keys(rowcelldict).length === 0) {
               return false;
             }
-            yearcount = 0;
-            totalcount = 1;
+            this.yearcount = 0;
+            this.totalcount = 1;
             for (i$ in rowcelldict) if (own$.call(rowcelldict, i$)) {
               (fn$.call(this, i$, rowcelldict[i$]));
             }
-            if (yearcount / totalcount >= 0.7) {
+            if (this.yearcount / this.totalcount >= 0.7) {
               return true;
             }
             return false;
             function fn$(key, value){
-              var cstr, digitarr;
+              var cstr, digitarr, i$, to$, i;
               cstr = value.cstr;
               digitarr = this.getNumset(cstr);
-              totalcount += digitarr.length;
-              digitarr.forEach(function(item){
-                if (item >= 1800 && item <= 2300) {
-                  return yearcount += 1;
+              this.totalcount += digitarr.length;
+              for (i$ = 0, to$ = digitarr.length - 1; i$ <= to$; ++i$) {
+                i = i$;
+                if (digitarr[i] >= 1800 && digitarr[i] <= 2300) {
+                  this.yearcount += 1;
                 }
-              });
+              }
             }
           };
           FeatureSheetRow.prototype.FeatureAlphabetaStartWithCapital = function(rowcelldict){
@@ -336,9 +339,9 @@
             capitalcount = 0;
             for (i$ = 0, to$ = clinetxt.length - 1; i$ <= to$; ++i$) {
               i = i$;
-              if (clinetxt.charAt(i) >= 'A' && clinetxt.charAt(i) >= 'Z') {
+              if (clinetxt.charAt(i) >= 'A' && clinetxt.charAt(i) <= 'Z') {
                 capitalcount += 1;
-              } else if (clinetxt.charAt(i) >= 'a' && clinetxt.charAt(i) >= 'z') {
+              } else if (clinetxt.charAt(i) >= 'a' && clinetxt.charAt(i) <= 'z') {
                 return false;
               }
             }
@@ -348,12 +351,12 @@
             return false;
           };
           FeatureSheetRow.prototype.FeatureAlphabetaCellnumPercentHigh = function(rowcelldict){
-            var count, i$, own$ = {}.hasOwnProperty;
-            count = 0;
+            var i$, own$ = {}.hasOwnProperty;
+            this.count = 0;
             for (i$ in rowcelldict) if (own$.call(rowcelldict, i$)) {
               (fn$.call(this, i$, rowcelldict[i$]));
             }
-            if (count / rowcelldict.length >= 0.6) {
+            if (this.count / Object.keys(rowcelldict).length >= 0.6) {
               return true;
             }
             return false;
@@ -361,8 +364,8 @@
               var cstr, mtype;
               cstr = value.cstr;
               mtype = value.mtype;
-              if (mtype === 'str' && cstr.search(/[A-Za-z]/)) {
-                count += 1;
+              if (mtype === 'str' && String(cstr).search(/[A-Za-z]/) === 0) {
+                this.count += 1;
               }
             }
           };
@@ -383,60 +386,66 @@
             return false;
           };
           FeatureSheetRow.prototype.FeatureContainColon = function(clinetxt){
-            if (clinetxt.search(':' >= -1)) {
+            var check;
+            check = parseInt(String(clinetxt).search(':'));
+            if (check > -1) {
               return true;
             }
             return false;
           };
           FeatureSheetRow.prototype.FeatureContainSpecialChar = function(clinetxt){
-            var i$, to$, i;
+            var i$, to$, i, check;
             for (i$ = 0, to$ = clinetxt.length - 1; i$ <= to$; ++i$) {
               i = i$;
-              if (clinetxt.charAt(i).search(/[\<#>;$]/ > -1)) {
+              check = parseInt(String(clinetxt.charAt(i)).search(/[\<#>;$]/));
+              if (check > -1) {
                 return true;
               }
             }
             return false;
           };
           FeatureSheetRow.prototype.FeatureIsOneColumn = function(rowcelldict){
-            if (rowcelldict.length === 1) {
+            if (Object.keys(rowcelldict).length === 1) {
               return true;
             }
             return false;
           };
           FeatureSheetRow.prototype.FeatureHasCenterAlignCell = function(crow, rowcelldict){
             var i$, own$ = {}.hasOwnProperty;
+            this.ret = false;
             for (i$ in rowcelldict) if (own$.call(rowcelldict, i$)) {
               (fn$.call(this, i$, rowcelldict[i$]));
             }
-            return false;
+            return this.ret;
             function fn$(key, value){
               if (value.centeralign_flag) {
-                return true;
+                this.ret = true;
               }
             }
           };
           FeatureSheetRow.prototype.FeatureHasLeftAlignCell = function(rownum, rowcelldict){
             var i$, own$ = {}.hasOwnProperty;
+            this.ret = false;
             for (i$ in rowcelldict) if (own$.call(rowcelldict, i$)) {
               (fn$.call(this, i$, rowcelldict[i$]));
             }
-            return false;
+            return this.ret;
             function fn$(key, value){
               if (value.leftalign_flag) {
-                return true;
+                this.ret = true;
               }
             }
           };
           FeatureSheetRow.prototype.FeatureHasBoldFontCell = function(rownum, rowcelldict){
             var i$, own$ = {}.hasOwnProperty;
+            this.ret = false;
             for (i$ in rowcelldict) if (own$.call(rowcelldict, i$)) {
               (fn$.call(this, i$, rowcelldict[i$]));
             }
-            return false;
+            return this.ret;
             function fn$(key, value){
               if (value.boldflag) {
-                return true;
+                this.ret = true;
               }
             }
           };
@@ -724,19 +733,19 @@
                     col2 = colnum + cellAttr.colspan.val - 1;
                     cmysheet.AddMergeCell(row1, row2, col1, col2);
                   }
-                  indents = parseInt(this.FeatureIndentation(cellAttr));
-                  alignstyle = parseInt(this.FeatureAlignStyle(cellAttr));
-                  borderstyle = this.FeatureBorderStyle(cellAttr);
-                  bgcolor = this.FeatureFontBgcolor(cellAttr);
-                  boldflag = parseInt(this.FeatureFontBold(cellAttr));
-                  height = parseInt(this.FeatureFontHeight(cellAttr));
-                  italicflag = parseInt(this.FeatureFontItalic(cellAttr));
-                  underlineflag = parseInt(this.FeatureFontUnderline(cellAttr));
-                  cmysheet.InsertCell(rownum, colnum, this.wb.sheet.LastRow(), this.wb.sheet.LastCol(), cellType, indents, alignstyle, borderstyle, bgcolor, boldflag, height, italicflag, underlineflag, cStr);
+                  if (cellDType !== null) {
+                    indents = parseInt(this.FeatureIndentation(cellAttr));
+                    alignstyle = parseInt(this.FeatureAlignStyle(cellAttr));
+                    borderstyle = this.FeatureBorderStyle(cellAttr);
+                    bgcolor = this.FeatureFontBgcolor(cellAttr);
+                    boldflag = parseInt(this.FeatureFontBold(cellAttr));
+                    height = parseInt(this.FeatureFontHeight(cellAttr));
+                    italicflag = parseInt(this.FeatureFontItalic(cellAttr));
+                    underlineflag = parseInt(this.FeatureFontUnderline(cellAttr));
+                    cmysheet.InsertCell(rownum, colnum, this.wb.sheet.LastRow(), this.wb.sheet.LastCol(), cellDType, indents, alignstyle, borderstyle, bgcolor, boldflag, height, italicflag, underlineflag, cStr);
+                  }
                 }
-                str += '([' + cellName + '] ' + indents + ', ' + alignstyle + ', ' + borderstyle + ', ' + bgcolor + ', ' + boldflag + ', ' + height + ', ' + italicflag + ', ' + underlineflag + ')';
               }
-              str += '<br/>';
             }
             sheetdict['Sheet1'] = cmysheet;
             return sheetdict;
@@ -768,21 +777,26 @@
             return ct;
           };
           LoadSheet.prototype.GetDataType = function(type, value){
+            var dtype;
+            dtype = null;
             switch (type) {
             case 't':
-              type = 'str';
+              dtype = 'str';
               break;
             case 'v':
               if (value % 1 === 0) {
-                type = 'int';
+                dtype = 'int';
               } else {
-                type = 'float';
+                dtype = 'float';
               }
               break;
             case 'c':
-              type = 'str';
+              dtype = 'str';
+              break;
+            default:
+              dtype = null;
             }
-            return type;
+            return dtype;
           };
           LoadSheet.prototype.FeatureIndentation = function(cellAttr){
             var val, unit;
@@ -809,6 +823,8 @@
                 return '2';
               case 'right':
                 return '3';
+              default:
+                return '1';
               }
             }
           };
