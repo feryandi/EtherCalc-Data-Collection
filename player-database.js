@@ -924,6 +924,9 @@
           gview.innerHTML = dictTxt;
           return;
         };
+        window.Synchronize = function(s, t){
+          return;
+        };
       }
     });
   };

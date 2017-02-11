@@ -15,7 +15,7 @@
     "livescript": "1.5.x",
     "minimatch": "*",
     "mysql": "github:mysqljs/mysql",
-    "nodemailer": "*",
+    "nodemailer": "2.7.0",
     "optimist": "*",
     "redis": "0.12.x",
     "socialcalc": "2.x",

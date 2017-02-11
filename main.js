@@ -2,7 +2,7 @@
 (function(){
   var join$ = [].join;
   this.include = function(){
-    var J, csvParse, DB, MYSQL, SC, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, fs, RealBin, DevMode, dataDir, sendFile, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
+    var CPE, cmd, J, csvParse, DB, MYSQL, SC, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, fs, RealBin, DevMode, dataDir, sendFile, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
     this.use('json', this.app.router, this.express['static'](__dirname));
     this.app.use('/edit', this.express['static'](__dirname));
     this.app.use('/view', this.express['static'](__dirname));
@@ -12,6 +12,13 @@
     this.include('player-graph');
     this.include('player-database');
     this.include('player');
+    CPE = require('child_process').exec;
+    cmd = 'crf_test -m /home/ethercalc/ethercalc/crf/example/model /home/ethercalc/ethercalc/crf/example/feature > /home/ethercalc/public/prediction';
+    CPE(cmd, function(error, stdout, stderr){
+      console.log("SHUTUP");
+      console.log("Err: " + stderr);
+      console.log("Hello: " + stdout);
+    });
     J = require('j');
     csvParse = require('csv-parse');
     DB = this.include('db');

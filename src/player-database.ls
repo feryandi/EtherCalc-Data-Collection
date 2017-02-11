@@ -1,3 +1,4 @@
+## Added by feryandi ##
 @include = -> @client '/player/database.js': ->
   $ = window.jQuery || window.$
   return location.reload! unless $
@@ -677,6 +678,10 @@
     dictTxt = JSON.stringify pr.GenerateFromSheetFile!
     gview = spreadsheet.views.database.element
     gview.innerHTML = dictTxt
+    return
+
+
+  window.Synchronize = !(s, t) ->
     return
 
   return

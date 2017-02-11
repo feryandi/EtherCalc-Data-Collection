@@ -4,6 +4,13 @@ RUN useradd ethercalc --create-home
 #RUN npm install -g ethercalc pm2
 RUN npm install -g pm2
 
+#Compiling CRF++
+COPY ./crf/crfpp /home/ethercalc/crfpp
+RUN cd /home/ethercalc/crfpp;./configure;sed -i '/#include "winmain.h"/d' crf_test.cpp;sed -i '/#include "winmain.h"/d' crf_learn.cpp;make install
+ENV LD_LIBRARY_PATH /usr/local/lib
+
+RUN mkdir /home/ethercalc/public; chmod 777 /home/ethercalc/public
+
 COPY . /home/ethercalc/ethercalc
 #RUN npm i /home/ethercalc/ethercalc
 

@@ -10,6 +10,16 @@
   @include \player-database
   @include \player
 
+
+  CPE = (require \child_process).exec
+  cmd = 'crf_test -m /home/ethercalc/ethercalc/crf/example/model /home/ethercalc/ethercalc/crf/example/feature > /home/ethercalc/public/prediction'
+
+  CPE cmd, (error, stdout, stderr) ->
+    console.log("SHUTUP")
+    console.log("Err: " + stderr)
+    console.log("Hello: " + stdout)
+    return
+
   J = require \j
   csv-parse = require \csv-parse
 
