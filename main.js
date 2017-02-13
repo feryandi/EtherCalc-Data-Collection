@@ -2,7 +2,7 @@
 (function(){
   var join$ = [].join;
   this.include = function(){
-    var CPE, cmd, J, csvParse, DB, MYSQL, SC, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, fs, RealBin, DevMode, dataDir, sendFile, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
+    var CPE, cmd, fs, J, csvParse, DB, SC, MYSQL, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, RealBin, DevMode, dataDir, sendFile, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
     this.use('json', this.app.router, this.express['static'](__dirname));
     this.app.use('/edit', this.express['static'](__dirname));
     this.app.use('/view', this.express['static'](__dirname));
@@ -15,17 +15,15 @@
     CPE = require('child_process').exec;
     cmd = 'crf_test -m /home/ethercalc/ethercalc/crf/example/model /home/ethercalc/ethercalc/crf/example/feature > /home/ethercalc/public/prediction';
     CPE(cmd, function(error, stdout, stderr){
-      console.log("SHUTUP");
-      console.log("Err: " + stderr);
-      console.log("Hello: " + stdout);
+      console.log("CPE OK");
+      console.log("stderr: " + stderr);
     });
+    fs = require('fs');
     J = require('j');
     csvParse = require('csv-parse');
     DB = this.include('db');
-    MYSQL = this.include('mysql');
     SC = this.include('sc');
-    MYSQL.log();
-    MYSQL.test();
+    MYSQL = this.include('mysql');
     KEY = this.KEY;
     BASEPATH = this.BASEPATH;
     EXPIRE = this.EXPIRE;
@@ -305,6 +303,7 @@
               }
             }
             timeList = res$;
+            console.log("timeList " + timeList);
             if (timeList.length === 0) {
               DB.hdel("cron-list", cellID);
             } else {
@@ -326,6 +325,46 @@
       }
     });
     ExportExcelXML = api(function(){});
+    this.post({
+      '/_framefinder/:room': function(){
+        var room, content, this$, basePath, filePath, featurePath, feature, crf;
+        room = this.params.room;
+        content = this.body.features;
+        console.log(this.params);
+        console.log(this.body);
+        this$ = this;
+        basePath = '/home/ethercalc/public/';
+        filePath = basePath + room;
+        featurePath = basePath + room + '_feature';
+        feature = function(filePath, content, cb){
+          return fs.writeFile(filePath, content, function(err){
+            if (err) {
+              return console.log(err);
+            }
+            return cb();
+          });
+        };
+        crf = function(filePath, featurePath, cb){
+          var CPE, cmd;
+          CPE = require('child_process').exec;
+          cmd = 'crf_test -m /home/ethercalc/ethercalc/crf/example/model ' + featurePath + ' > ' + filePath;
+          return CPE(cmd, function(error, stdout, stderr){
+            return fs.readFile(filePath, 'utf8', function(err, data){
+              if (err) {
+                return console.log(err);
+              }
+              return cb(data);
+            });
+          });
+        };
+        return feature(featurePath, content, function(){
+          return crf(filePath, featurePath, function(data){
+            this$.response.type('text/plain');
+            return this$.response.send(200, data);
+          });
+        });
+      }
+    });
     this.get({
       '/:room.csv': ExportCSV
     });
@@ -505,6 +544,7 @@
     });
     requestToCommand = function(request, cb){
       var command, ref$, cs, this$ = this;
+      console.log("request-to-command");
       if (request.is('application/json')) {
         command = (ref$ = request.body) != null ? ref$.command : void 8;
         if (command) {
@@ -545,6 +585,7 @@
     };
     requestToSave = function(request, cb){
       var snapshot, ref$, cs, this$ = this;
+      console.log("request-to-save");
       if (request.is('application/json')) {
         snapshot = (ref$ = request.body) != null ? ref$.snapshot : void 8;
         if (snapshot) {
@@ -582,6 +623,7 @@
     this.put({
       '/_/:room': function(){
         var room, this$ = this;
+        console.log("put /_/:room");
         this.response.type(Text);
         room = this.params.room;
         return requestToSave(this.request, function(snapshot){
@@ -605,6 +647,7 @@
     this.post({
       '/_/:room': function(){
         var room, this$ = this;
+        console.log("post /_/:room");
         room = this.params.room;
         return requestToCommand(this.request, function(command){
           if (!command) {
@@ -666,6 +709,7 @@
     this.post({
       '/_': function(){
         var this$ = this;
+        console.log("post /_/:room");
         return requestToSave(this.request, function(snapshot){
           var room, ref$;
           room = ((ref$ = this$.body) != null ? ref$.room : void 8) || newRoom();
@@ -736,6 +780,7 @@
       data: function(){
         var ref$, room, msg, user, ecell, cmdstr, type, auth, reply, broadcast, this$ = this;
         ref$ = this.data, room = ref$.room, msg = ref$.msg, user = ref$.user, ecell = ref$.ecell, cmdstr = ref$.cmdstr, type = ref$.type, auth = ref$.auth;
+        console.log("on data: ", (import$({}, this.data)));
         room = (room + "").replace(/^_+/, '');
         if (EXPIRE) {
           DB.expire("snapshot-" + room, EXPIRE);

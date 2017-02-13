@@ -10,25 +10,23 @@
   @include \player-database
   @include \player
 
-
   CPE = (require \child_process).exec
   cmd = 'crf_test -m /home/ethercalc/ethercalc/crf/example/model /home/ethercalc/ethercalc/crf/example/feature > /home/ethercalc/public/prediction'
-
   CPE cmd, (error, stdout, stderr) ->
-    console.log("SHUTUP")
-    console.log("Err: " + stderr)
-    console.log("Hello: " + stdout)
+    console.log("CPE OK")
+    console.log("stderr: " + stderr)
     return
+
+  fs = require \fs
 
   J = require \j
   csv-parse = require \csv-parse
 
   DB = @include \db
-  MYSQL = @include \mysql
   SC = @include \sc
 
-  MYSQL.log!
-  MYSQL.test!
+  ## added by feryandi ##
+  MYSQL = @include \mysql
 
   KEY = @KEY
   BASEPATH = @BASEPATH
@@ -199,7 +197,7 @@
             if nextTriggerTime > triggerTimeMins 
               nextTriggerTime = triggerTimeMins
             triggerTimeMins
-        #console.log "timeList #timeList"
+        console.log "timeList #timeList"
         if timeList.length == 0 
           DB.hdel "cron-list", cellID
         else
@@ -216,6 +214,37 @@
       @response.send 200 allTimeTriggers
 
   ExportExcelXML = api ->
+
+  @post '/_framefinder/:room': -> 
+    room = @params.room
+    content = @body.features
+    console.log(@params)
+    console.log(@body)
+    this$ = this
+
+    basePath = '/home/ethercalc/public/'
+    filePath = basePath + room
+    featurePath = basePath + room + '_feature'
+
+    feature = (filePath, content, cb) ->
+      fs.writeFile filePath, content, (err) ->
+        if err 
+          return console.log(err);
+        cb!
+
+    crf = (filePath, featurePath, cb) ->
+      CPE = (require \child_process).exec
+      cmd = 'crf_test -m /home/ethercalc/ethercalc/crf/example/model ' + featurePath + ' > ' + filePath
+      CPE cmd, (error, stdout, stderr) ->
+        fs.readFile filePath, 'utf8', (err,data) ->
+          if err 
+            return console.log(err);
+          cb data
+
+    feature featurePath, content, ->
+      crf filePath, featurePath, (data) ->
+        this$.response.type \text/plain
+        this$.response.send 200 data
 
   @get '/:room.csv': ExportCSV
   @get '/:room.csv.json': ExportCSV-JSON
@@ -299,7 +328,7 @@
   @get '/_/:room': api -> [Text, it]
 
   request-to-command = (request, cb) ->
-    #console.log "request-to-command"
+    console.log "request-to-command"
     if request.is \application/json
       command = request.body?command
       return cb command if command
@@ -318,7 +347,7 @@
       return cb "loadclipboard #save"
 
   request-to-save = (request, cb) ->
-    #console.log "request-to-save"
+    console.log "request-to-save"
     if request.is \application/json
       snapshot = request.body?snapshot
       return cb snapshot if snapshot
@@ -363,7 +392,7 @@
     @response.send 201 \OK
 
   @put '/_/:room': ->
-    #console.log "put /_/:room"
+    console.log "put /_/:room"
     @response.type Text
     {room} = @params
     snapshot <~ request-to-save @request
@@ -375,7 +404,7 @@
     @response.send 201 \OK
 
   @post '/_/:room': ->
-    #console.log "post /_/:room"
+    console.log "post /_/:room"
     {room} = @params
     command <~ request-to-command @request
     unless command
@@ -415,7 +444,7 @@
     @response.json 202 {command}
 
   @post '/_': ->
-    #console.log "post /_/:room"
+    console.log "post /_/:room"
     snapshot <~ request-to-save @request
     room = @body?room || new-room!
     <~ SC._put room, snapshot
@@ -453,7 +482,7 @@
   @on data: !->
     {room, msg, user, ecell, cmdstr, type, auth} = @data
     # eddy
-    #console.log "on data: " {...@data} 
+    console.log "on data: " {...@data} 
     room = "#room" - /^_+/ # preceding underscore is reserved
     DB.expire "snapshot-#room", EXPIRE if EXPIRE
     reply = (data) ~> @emit {data}

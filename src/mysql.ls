@@ -33,7 +33,7 @@
 
   db.log = -> 
     console.log "MySQL OK" 
-    return
+    return "Some shitty strings"
 
   db.test = ->
     client.query 'CREATE TABLE pet (name VARCHAR(20), sex CHAR(1), birth DATE, death DATE)', (error, results, fields) -> return

@@ -32,6 +32,7 @@
     dataDir == null && (dataDir = process.cwd());
     db.log = function(){
       console.log("MySQL OK");
+      return "Some shitty strings";
     };
     db.test = function(){
       return client.query('CREATE TABLE pet (name VARCHAR(20), sex CHAR(1), birth DATE, death DATE)', function(error, results, fields){});

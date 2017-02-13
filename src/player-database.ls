@@ -28,7 +28,7 @@
               strout += '1 '
             else
               strout += '0 '
-          strout += 'Title<br/>'
+          strout += 'Title\n'
       return strout
 
 
@@ -680,8 +680,27 @@
     gview.innerHTML = dictTxt
     return
 
-
   window.Synchronize = !(s, t) ->
+    pr = new PredictSheetRows
+    featurestxt = pr.GenerateFromSheetFile!
+
+    payload = 
+      * features: featurestxt
+
+    request =
+      * type: "POST"
+        url: window.location.protocol + "//" + window.location.host + "/_framefinder/" + SocialCalc._room
+        contentType: "application/json"
+        data: JSON.stringify payload
+        success: (response) ->
+          console.log("SUX")
+          gview = spreadsheet.views.database.element
+          gview.innerHTML = response
+        error: (response) ->
+          console.log("FUXERR")
+
+    $.ajax request
+
     return
 
   return

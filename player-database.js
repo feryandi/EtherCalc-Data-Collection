@@ -43,7 +43,7 @@
                     return strout += '0 ';
                   }
                 });
-                strout += 'Title<br/>';
+                strout += 'Title\n';
               }
             }
           };
@@ -925,6 +925,28 @@
           return;
         };
         window.Synchronize = function(s, t){
+          var pr, featurestxt, payload, request;
+          pr = new PredictSheetRows;
+          featurestxt = pr.GenerateFromSheetFile();
+          payload = {
+            features: featurestxt
+          };
+          request = {
+            type: "POST",
+            url: window.location.protocol + "//" + window.location.host + "/_framefinder/" + SocialCalc._room,
+            contentType: "application/json",
+            data: JSON.stringify(payload),
+            success: function(response){
+              var gview;
+              console.log("SUX");
+              gview = spreadsheet.views.database.element;
+              return gview.innerHTML = response;
+            },
+            error: function(response){
+              return console.log("FUXERR");
+            }
+          };
+          $.ajax(request);
           return;
         };
       }
