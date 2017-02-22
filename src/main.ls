@@ -215,11 +215,16 @@
 
   ExportExcelXML = api ->
 
+  @post '/_database/create': ->
+    MYSQL.createTable @body.name
+    data =
+      * status: "OK"
+    @response.type \application/json
+    @response.json 200 data
+
   @post '/_framefinder/:room': -> 
     room = @params.room
     content = @body.features
-    console.log(@params)
-    console.log(@body)
     this$ = this
 
     basePath = '/home/ethercalc/public/'
@@ -239,12 +244,23 @@
         fs.readFile filePath, 'utf8', (err,data) ->
           if err 
             return console.log(err);
-          cb data
+          result = []
+          lines = data.split "\n"
+          for line in lines
+            obj = {}
+            elemt = line.split "\t"
+            if elemt[0] != ''
+              obj.row = elemt[0]
+              obj.type = elemt[elemt.length - 1]
+              result.push obj
+          console.log(result)
+          cb JSON.stringify result
 
     feature featurePath, content, ->
       crf filePath, featurePath, (data) ->
-        this$.response.type \text/plain
-        this$.response.send 200 data
+        console.log(data)
+        this$.response.type \application/json
+        this$.response.json 200 data
 
   @get '/:room.csv': ExportCSV
   @get '/:room.csv.json': ExportCSV-JSON

@@ -30,6 +30,9 @@
       console.log("MySQL connected as id " + client + ".threadId");
     });
     dataDir == null && (dataDir = process.cwd());
+    db.createTable = function(table_name){
+      return client.query('CREATE TABLE table_name (id INT(11))', function(error, results, fields){});
+    };
     db.log = function(){
       console.log("MySQL OK");
       return "Some shitty strings";

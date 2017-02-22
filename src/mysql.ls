@@ -31,6 +31,9 @@
 
   dataDir ?= process.cwd!
 
+  db.createTable = (table_name) ->
+    client.query 'CREATE TABLE table_name (id INT(11))', (error, results, fields) -> return
+
   db.log = -> 
     console.log "MySQL OK" 
     return "Some shitty strings"

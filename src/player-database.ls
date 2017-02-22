@@ -4,18 +4,121 @@
   return location.reload! unless $
   SocialCalc = window.SocialCalc || alert 'Cannot find window.SocialCalc'
 
-  header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"\" style=\"font-size:x-small;\"></td></tr></table>"
+  header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr></table>"
 
-  table_template = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><center><h4>Table 1</h4></center></div><div><table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Range</th><th>Type Validation</th><th>Range Validation</th><th>Relation Validation</th></tr></thead><tr><td><input id=\"%id.t1.databaseLabel1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"%id.t1.databaseData1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><select id=\"%id.t1.databaseTypeV1\" size=\"1\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"><option selected>None</option><option>String</option><option>Integer</option></select></td><td><input id=\"%id.t1.databaseRangeV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"%id.t1.databaseRelationV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td></tr></table></div></div>"
+  class Table
+    (sheetdict, data) ->
+      ## INI SEBAIKNYA YG DISIMPEN DISINI DALAM BENTUK: {label, range, datatypev, rangev, relationv} ga sih?
+      # Karena yang bakal diretrieve dan disimpem serta diedit ya itu2 bukan bagian title, footer header lala2 itu ntar
+      # di generate ulang kan pas pencet synchronize
+      console.log(sheetdict)
+      @sheet = sheetdict
+      @sheetname = 'Sheet1' ## Not gonna supprot multi sheet yet
+      @title = []
+      @footnote = []
+      @header = []
+      @data = []
+      @startcol = 1
+      @endcol = @sheet[@sheetname]['maxcolnum']
+      @ParseData data
+
+    ParseData: (data) ->
+      console.log(data)
+      jdata = JSON.parse data
+      if jdata != null
+        for row in jdata
+          if row.type == "Title"
+            @title.push (parseInt(row.row) + 1)
+          else if row.type == "Footnote"
+            @footnote.push (parseInt(row.row) + 1)
+          else if row.type == "Header"
+            @header.push (parseInt(row.row) + 1)
+          else if row.type == "Data"
+            @data.push (parseInt(row.row) + 1)
+
+    Serialize: ->
+      data = {}
+      data['title'] = @title
+      data['footnote'] = @footnote
+      data['header'] = @header
+      data['data'] = @data
+      data['startcol'] = @startcol
+      data['endcol'] = @endcol
+      console.log(JSON.stringify data)
+      return JSON.stringify data
+
+    Deserialize: (sdata) ->
+      data = JSON.parse sdata
+      @title = data['title']
+      @footnote = data['footnote']
+      @header = data['header']
+      @data = data['data']
+      @startcol = data['startcol']
+      @endcol = data['endcol']
+
+    #Simple Straight Forward Methods
+    GetDataRange: (col) ->
+      minval = Math.min(...@data)
+      maxval = Math.max(...@data)
+      return SocialCalc.rcColname(col) + minval + ":" + SocialCalc.rcColname(col) + maxval
+
+    MapHeaderData: ->
+      ## Baru bisa single table
+      hdata = []
+      for col from @startcol to @endcol
+        tempobj = {}
+        tempobj['header'] = ""
+        for h in @header
+          tempobj['header'] += @sheet[@sheetname]['sheetdict'][SocialCalc.rcColname(col) + h].cstr + " "
+        tempobj['data'] = @GetDataRange col
+        hdata.push tempobj
+      return hdata
+
+    GetHTMLForm: ->
+      ## ONLY ONE TABLE FOR NOW :(
+      i = 1;
+      hdata = @MapHeaderData!
+
+      whole_table = ""
+
+      title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><center>" + "<h4>Table " + i + "</h4>" + "</center>"
+      whole_table += title_div
+
+      begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Range</th><th>Type Validation</th><th>Range Validation</th><th>Relation Validation</th></tr></thead>"
+      whole_table += begin_table
+
+      ## Table Start Here
+      n = 1
+      for hd in hdata
+        table_start = "<tr>"
+
+        table_label = "<td><input id=\"%id.t1.databaseLabel" + n + "\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\" value=\"" + hd['header'] + "\" /></td>"
+
+        table_data = "<td><input id=\"%id.t1.databaseData" + n + "\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\" value=\"" + hd['data'] + "\" /></td>"
+
+        table_validations = "<td><select id=\"%id.t1.databaseType" + n + "\" size=\"1\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"><option selected>None</option><option>String</option><option>Integer</option></select></td><td><input id=\"%id.t1.databaseRangeV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"%id.t1.databaseRelationV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td>"
+
+        table_datatype = "<td><select id=\"%id.t1.databaseType" + n + "\" size=\"1\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"><option selected>Integer</option><option>Double</option><option>String</option><option>Text</option><option>Boolean</option></select></td>"
+
+        table_validations = table_datatype
+
+        table_end = "</tr>"
+
+        table_per_data = table_start + table_label + table_data + table_validations + table_end
+        whole_table += table_per_data
+        n += 1
+
+      end_table = "</table></div></div>"
+      whole_table += end_table
+
+      return whole_table
 
   class PredictSheetRows
     (null) ->
       @fea_row = new FeatureSheetRow
 
-    GenerateFromSheetFile: ->
+    GenerateFromSheetFile: (sheetdict) ->
       strout = ''
-      loadsheet = new LoadSheet SocialCalc.GetSpreadsheetControlObject!
-      sheetdict = loadsheet.LoadSheetDict!
 
       for own let sheetname, mysheet of sheetdict
         feadict = @fea_row.GenerateSingularFeatureCrf mysheet, sheetname
@@ -47,7 +150,6 @@
           if (mysheet.sheetdict[SocialCalc.rcColname(ccol) + crow]) != undefined
             mycell = mysheet.sheetdict[SocialCalc.rcColname(ccol) + crow]
             rowcelldict[ccol-1] = mycell
-            #console.log("(" + SocialCalc.rcColname(ccol) + crow + ")[" + (ccol-1) + "] ~ " + rowcelldict[ccol-1].cstr)
         if Object.keys(rowcelldict).length != 0
           if feadict.hasOwnProperty crow - 1
             blankflag = false
@@ -87,7 +189,7 @@
       feavec.push @FeatureContainColon clinetxt #20
       feavec.push @FeatureYearRangeCellnumHigh rowcelldict #21
       feavec.push @FeatureYearRangePercentHigh rowcelldict #22
-      feavec.push @FeatureWordLengthHigh rowcelldict #23!!!!!!
+      feavec.push @FeatureWordLengthHigh rowcelldict #23
       return feavec
 
     FeatureOneVariableTxt: (predicate, rowname, flag) ->
@@ -674,15 +776,49 @@
       return str
 
   window.DatabaseOnClick = !(s, t) ->
-    pr = new PredictSheetRows
-    dictTxt = JSON.stringify pr.GenerateFromSheetFile!
-    gview = spreadsheet.views.database.element
-    gview.innerHTML = dictTxt
+    savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
+
+    sheet = SocialCalc.GetSpreadsheetControlObject!
+    loadsheet = new LoadSheet sheet
+    sheetdict = loadsheet.LoadSheetDict!
+    gview = sheet.views.database.element
+
+    if savedData.value == null || savedData.value == ""
+      pr = new PredictSheetRows
+      dictTxt = pr.GenerateFromSheetFile sheetdict
+      gview.innerHTML = header_div
+    else
+      table = new Table sheetdict, "null"
+      table.Deserialize savedData.value
+      gview.innerHTML = header_div + table.GetHTMLForm!
     return
 
-  window.Synchronize = !(s, t) ->
+  window.Save = ->
+    console.log("MASUK COY")
+    payload = 
+      * name: SocialCalc._room
+
+    request =
+      * type: "POST"
+        url: window.location.protocol + "//" + window.location.host + "/_database/create"
+        contentType: "application/json"
+        data: JSON.stringify payload
+        success: (response) ->
+          console.log("OK OK OK MYSQL OK OK OK")
+        error: (response) ->
+          console.log("Error getting predicted data")
+
+    $.ajax request
+    return
+
+  window.Synchronize = ->
+    savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
+
+    sheet = SocialCalc.GetSpreadsheetControlObject!
+    loadsheet = new LoadSheet sheet
+    sheetdict = loadsheet.LoadSheetDict!
     pr = new PredictSheetRows
-    featurestxt = pr.GenerateFromSheetFile!
+    featurestxt = pr.GenerateFromSheetFile sheetdict
 
     payload = 
       * features: featurestxt
@@ -693,11 +829,13 @@
         contentType: "application/json"
         data: JSON.stringify payload
         success: (response) ->
-          console.log("SUX")
-          gview = spreadsheet.views.database.element
-          gview.innerHTML = response
+          table = new Table sheetdict, response
+          console.log(table.MapHeaderData!)
+          gview = sheet.views.database.element
+          savedData.value = table.Serialize!
+          gview.innerHTML = header_div + table.GetHTMLForm!
         error: (response) ->
-          console.log("FUXERR")
+          console.log("Error getting predicted data")
 
     $.ajax request
 

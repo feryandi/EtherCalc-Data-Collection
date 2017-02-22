@@ -3,25 +3,130 @@
   this.include = function(){
     return this.client({
       '/player/database.js': function(){
-        var $, SocialCalc, header_div, table_template, PredictSheetRows, FeatureSheetRow, FeatureFormat, MySheet, MyCell, LoadSheet;
+        var $, SocialCalc, header_div, Table, PredictSheetRows, FeatureSheetRow, FeatureFormat, MySheet, MyCell, LoadSheet;
         $ = window.jQuery || window.$;
         if (!$) {
           return location.reload();
         }
         SocialCalc = window.SocialCalc || alert('Cannot find window.SocialCalc');
-        header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"\" style=\"font-size:x-small;\"></td></tr></table>";
-        table_template = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><center><h4>Table 1</h4></center></div><div><table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Range</th><th>Type Validation</th><th>Range Validation</th><th>Relation Validation</th></tr></thead><tr><td><input id=\"%id.t1.databaseLabel1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"%id.t1.databaseData1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><select id=\"%id.t1.databaseTypeV1\" size=\"1\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"><option selected>None</option><option>String</option><option>Integer</option></select></td><td><input id=\"%id.t1.databaseRangeV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"%id.t1.databaseRelationV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td></tr></table></div></div>";
+        header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr></table>";
+        Table = (function(){
+          Table.displayName = 'Table';
+          var prototype = Table.prototype, constructor = Table;
+          function Table(sheetdict, data){
+            console.log(sheetdict);
+            this.sheet = sheetdict;
+            this.sheetname = 'Sheet1';
+            this.title = [];
+            this.footnote = [];
+            this.header = [];
+            this.data = [];
+            this.startcol = 1;
+            this.endcol = this.sheet[this.sheetname]['maxcolnum'];
+            this.ParseData(data);
+          }
+          Table.prototype.ParseData = function(data){
+            var jdata, i$, len$, row, results$ = [];
+            console.log(data);
+            jdata = JSON.parse(data);
+            if (jdata !== null) {
+              for (i$ = 0, len$ = jdata.length; i$ < len$; ++i$) {
+                row = jdata[i$];
+                if (row.type === "Title") {
+                  results$.push(this.title.push(parseInt(row.row) + 1));
+                } else if (row.type === "Footnote") {
+                  results$.push(this.footnote.push(parseInt(row.row) + 1));
+                } else if (row.type === "Header") {
+                  results$.push(this.header.push(parseInt(row.row) + 1));
+                } else if (row.type === "Data") {
+                  results$.push(this.data.push(parseInt(row.row) + 1));
+                }
+              }
+              return results$;
+            }
+          };
+          Table.prototype.Serialize = function(){
+            var data;
+            data = {};
+            data['title'] = this.title;
+            data['footnote'] = this.footnote;
+            data['header'] = this.header;
+            data['data'] = this.data;
+            data['startcol'] = this.startcol;
+            data['endcol'] = this.endcol;
+            console.log(JSON.stringify(data));
+            return JSON.stringify(data);
+          };
+          Table.prototype.Deserialize = function(sdata){
+            var data;
+            data = JSON.parse(sdata);
+            this.title = data['title'];
+            this.footnote = data['footnote'];
+            this.header = data['header'];
+            this.data = data['data'];
+            this.startcol = data['startcol'];
+            return this.endcol = data['endcol'];
+          };
+          Table.prototype.GetDataRange = function(col){
+            var minval, maxval;
+            minval = Math.min.apply(Math, this.data);
+            maxval = Math.max.apply(Math, this.data);
+            return SocialCalc.rcColname(col) + minval + ":" + SocialCalc.rcColname(col) + maxval;
+          };
+          Table.prototype.MapHeaderData = function(){
+            var hdata, i$, to$, col, tempobj, j$, ref$, len$, h;
+            hdata = [];
+            for (i$ = this.startcol, to$ = this.endcol; i$ <= to$; ++i$) {
+              col = i$;
+              tempobj = {};
+              tempobj['header'] = "";
+              for (j$ = 0, len$ = (ref$ = this.header).length; j$ < len$; ++j$) {
+                h = ref$[j$];
+                tempobj['header'] += this.sheet[this.sheetname]['sheetdict'][SocialCalc.rcColname(col) + h].cstr + " ";
+              }
+              tempobj['data'] = this.GetDataRange(col);
+              hdata.push(tempobj);
+            }
+            return hdata;
+          };
+          Table.prototype.GetHTMLForm = function(){
+            var i, hdata, whole_table, title_div, begin_table, n, i$, len$, hd, table_start, table_label, table_data, table_validations, table_datatype, table_end, table_per_data, end_table;
+            i = 1;
+            hdata = this.MapHeaderData();
+            whole_table = "";
+            title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><center>" + "<h4>Table " + i + "</h4>" + "</center>";
+            whole_table += title_div;
+            begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Range</th><th>Type Validation</th><th>Range Validation</th><th>Relation Validation</th></tr></thead>";
+            whole_table += begin_table;
+            n = 1;
+            for (i$ = 0, len$ = hdata.length; i$ < len$; ++i$) {
+              hd = hdata[i$];
+              table_start = "<tr>";
+              table_label = "<td><input id=\"%id.t1.databaseLabel" + n + "\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\" value=\"" + hd['header'] + "\" /></td>";
+              table_data = "<td><input id=\"%id.t1.databaseData" + n + "\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\" value=\"" + hd['data'] + "\" /></td>";
+              table_validations = "<td><select id=\"%id.t1.databaseType" + n + "\" size=\"1\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"><option selected>None</option><option>String</option><option>Integer</option></select></td><td><input id=\"%id.t1.databaseRangeV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"%id.t1.databaseRelationV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td>";
+              table_datatype = "<td><select id=\"%id.t1.databaseType" + n + "\" size=\"1\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"><option selected>Integer</option><option>Double</option><option>String</option><option>Text</option><option>Boolean</option></select></td>";
+              table_validations = table_datatype;
+              table_end = "</tr>";
+              table_per_data = table_start + table_label + table_data + table_validations + table_end;
+              whole_table += table_per_data;
+              n += 1;
+            }
+            end_table = "</table></div></div>";
+            whole_table += end_table;
+            return whole_table;
+          };
+          return Table;
+        }());
         PredictSheetRows = (function(){
           PredictSheetRows.displayName = 'PredictSheetRows';
           var prototype = PredictSheetRows.prototype, constructor = PredictSheetRows;
           function PredictSheetRows(){
             this.fea_row = new FeatureSheetRow;
           }
-          PredictSheetRows.prototype.GenerateFromSheetFile = function(){
-            var strout, loadsheet, sheetdict, i$, own$ = {}.hasOwnProperty;
+          PredictSheetRows.prototype.GenerateFromSheetFile = function(sheetdict){
+            var strout, i$, own$ = {}.hasOwnProperty;
             strout = '';
-            loadsheet = new LoadSheet(SocialCalc.GetSpreadsheetControlObject());
-            sheetdict = loadsheet.LoadSheetDict();
             for (i$ in sheetdict) if (own$.call(sheetdict, i$)) {
               (fn$.call(this, i$, sheetdict[i$]));
             }
@@ -917,17 +1022,51 @@
           return LoadSheet;
         }());
         window.DatabaseOnClick = function(s, t){
-          var pr, dictTxt, gview;
-          pr = new PredictSheetRows;
-          dictTxt = JSON.stringify(pr.GenerateFromSheetFile());
-          gview = spreadsheet.views.database.element;
-          gview.innerHTML = dictTxt;
+          var savedData, sheet, loadsheet, sheetdict, gview, pr, dictTxt, table;
+          savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          sheet = SocialCalc.GetSpreadsheetControlObject();
+          loadsheet = new LoadSheet(sheet);
+          sheetdict = loadsheet.LoadSheetDict();
+          gview = sheet.views.database.element;
+          if (savedData.value === null || savedData.value === "") {
+            pr = new PredictSheetRows;
+            dictTxt = pr.GenerateFromSheetFile(sheetdict);
+            gview.innerHTML = header_div;
+          } else {
+            table = new Table(sheetdict, "null");
+            table.Deserialize(savedData.value);
+            gview.innerHTML = header_div + table.GetHTMLForm();
+          }
           return;
         };
-        window.Synchronize = function(s, t){
-          var pr, featurestxt, payload, request;
+        window.Save = function(){
+          var payload, request;
+          console.log("MASUK COY");
+          payload = {
+            name: SocialCalc._room
+          };
+          request = {
+            type: "POST",
+            url: window.location.protocol + "//" + window.location.host + "/_database/create",
+            contentType: "application/json",
+            data: JSON.stringify(payload),
+            success: function(response){
+              return console.log("OK OK OK MYSQL OK OK OK");
+            },
+            error: function(response){
+              return console.log("Error getting predicted data");
+            }
+          };
+          $.ajax(request);
+        };
+        window.Synchronize = function(){
+          var savedData, sheet, loadsheet, sheetdict, pr, featurestxt, payload, request;
+          savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          sheet = SocialCalc.GetSpreadsheetControlObject();
+          loadsheet = new LoadSheet(sheet);
+          sheetdict = loadsheet.LoadSheetDict();
           pr = new PredictSheetRows;
-          featurestxt = pr.GenerateFromSheetFile();
+          featurestxt = pr.GenerateFromSheetFile(sheetdict);
           payload = {
             features: featurestxt
           };
@@ -937,17 +1076,18 @@
             contentType: "application/json",
             data: JSON.stringify(payload),
             success: function(response){
-              var gview;
-              console.log("SUX");
-              gview = spreadsheet.views.database.element;
-              return gview.innerHTML = response;
+              var table, gview;
+              table = new Table(sheetdict, response);
+              console.log(table.MapHeaderData());
+              gview = sheet.views.database.element;
+              savedData.value = table.Serialize();
+              return gview.innerHTML = header_div + table.GetHTMLForm();
             },
             error: function(response){
-              return console.log("FUXERR");
+              return console.log("Error getting predicted data");
             }
           };
           $.ajax(request);
-          return;
         };
       }
     });

@@ -326,12 +326,21 @@
     });
     ExportExcelXML = api(function(){});
     this.post({
+      '/_database/create': function(){
+        var data;
+        MYSQL.createTable(this.body.name);
+        data = {
+          status: "OK"
+        };
+        this.response.type('application/json');
+        return this.response.json(200, data);
+      }
+    });
+    this.post({
       '/_framefinder/:room': function(){
         var room, content, this$, basePath, filePath, featurePath, feature, crf;
         room = this.params.room;
         content = this.body.features;
-        console.log(this.params);
-        console.log(this.body);
         this$ = this;
         basePath = '/home/ethercalc/public/';
         filePath = basePath + room;
@@ -350,17 +359,32 @@
           cmd = 'crf_test -m /home/ethercalc/ethercalc/crf/example/model ' + featurePath + ' > ' + filePath;
           return CPE(cmd, function(error, stdout, stderr){
             return fs.readFile(filePath, 'utf8', function(err, data){
+              var result, lines, i$, len$, line, obj, elemt;
               if (err) {
                 return console.log(err);
               }
-              return cb(data);
+              result = [];
+              lines = data.split("\n");
+              for (i$ = 0, len$ = lines.length; i$ < len$; ++i$) {
+                line = lines[i$];
+                obj = {};
+                elemt = line.split("\t");
+                if (elemt[0] !== '') {
+                  obj.row = elemt[0];
+                  obj.type = elemt[elemt.length - 1];
+                  result.push(obj);
+                }
+              }
+              console.log(result);
+              return cb(JSON.stringify(result));
             });
           });
         };
         return feature(featurePath, content, function(){
           return crf(filePath, featurePath, function(data){
-            this$.response.type('text/plain');
-            return this$.response.send(200, data);
+            console.log(data);
+            this$.response.type('application/json');
+            return this$.response.json(200, data);
           });
         });
       }
