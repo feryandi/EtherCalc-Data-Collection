@@ -4,6 +4,9 @@
   @app.use \/view @express.static __dirname
   @app.use \/app @express.static __dirname
 
+  ## Helpers
+  Table = require('./static/table')
+
   @include \dotcloud
   @include \player-broadcast
   @include \player-graph
@@ -216,7 +219,12 @@
   ExportExcelXML = api ->
 
   @post '/_database/create': ->
-    MYSQL.createTable @body.name
+    #MYSQL.createTable @body.name
+    table = new Table null, null
+    console.log(@body.table)
+    table.Deserialize @body.table
+    console.log(table.GetHTMLForm!)
+
     data =
       * status: "OK"
     @response.type \application/json

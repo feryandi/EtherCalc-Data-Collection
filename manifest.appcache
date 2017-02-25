@@ -24,6 +24,7 @@ static/multi.js
 static/ethercalc.js
 socket.io/socket.io.js
 zappa/zappa.js
+helper/table.js
 player/broadcast.js
 player/graph.js
 player/database.js

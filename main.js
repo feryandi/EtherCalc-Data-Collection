@@ -2,11 +2,12 @@
 (function(){
   var join$ = [].join;
   this.include = function(){
-    var CPE, cmd, fs, J, csvParse, DB, SC, MYSQL, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, RealBin, DevMode, dataDir, sendFile, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
+    var Table, CPE, cmd, fs, J, csvParse, DB, SC, MYSQL, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, RealBin, DevMode, dataDir, sendFile, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
     this.use('json', this.app.router, this.express['static'](__dirname));
     this.app.use('/edit', this.express['static'](__dirname));
     this.app.use('/view', this.express['static'](__dirname));
     this.app.use('/app', this.express['static'](__dirname));
+    Table = require('./static/table');
     this.include('dotcloud');
     this.include('player-broadcast');
     this.include('player-graph');
@@ -327,8 +328,11 @@
     ExportExcelXML = api(function(){});
     this.post({
       '/_database/create': function(){
-        var data;
-        MYSQL.createTable(this.body.name);
+        var table, data;
+        table = new Table(null, null);
+        console.log(this.body.table);
+        table.Deserialize(this.body.table);
+        console.log(table.GetHTMLForm());
         data = {
           status: "OK"
         };
