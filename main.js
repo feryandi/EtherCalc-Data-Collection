@@ -328,11 +328,22 @@
     ExportExcelXML = api(function(){});
     this.post({
       '/_database/create': function(){
-        var table, data;
-        table = new Table(null, null);
-        console.log(this.body.table);
-        table.Deserialize(this.body.table);
-        console.log(table.GetHTMLForm());
+        var tablec, table, data;
+        tablec = new Table(null, null);
+        table = tablec.TupleDeserialize(this.body.table);
+        MYSQL.isExistTable(table.name, function(err, results){
+          var i$, ref$, len$, data, results$ = [];
+          if (results > 0) {
+            console.log("Exist. Dropping Table.");
+            MYSQL.dropTable(table.name);
+          }
+          MYSQL.createTable(table.name, table.headers);
+          for (i$ = 0, len$ = (ref$ = table.data).length; i$ < len$; ++i$) {
+            data = ref$[i$];
+            results$.push(MYSQL.insertData(table.name, table.headers, data));
+          }
+          return results$;
+        });
         data = {
           status: "OK"
         };

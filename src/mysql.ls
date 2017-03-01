@@ -31,15 +31,58 @@
 
   dataDir ?= process.cwd!
 
-  db.createTable = (table_name) ->
-    client.query 'CREATE TABLE table_name (id INT(11))', (error, results, fields) -> return
+  db.createTable = (table_name, columns) ->
+    colstring = '('
+    i = 0
+    for col in columns
+      if i > 0
+        colstring += ', '
+      ## DISINI HARUSNYA DITANGANIN JUGA JENIS2 VARCHAR, TEXT BERAPA LENGTHNYA DLL 
+      ## YANG INI BARU DEFAULT: VARCHAR
+      colstring += '`' + col.name.trim! + '` ' + col.type + '(160)'
+      i += 1
+    colstring += ')'
+
+    client.query "CREATE TABLE " + table_name + " " + colstring, (error, results, fields) -> 
+      console.log ("ERROR CREATE: " + error)
+
+  db.isExistTable = (table_name, cb) ->
+    console.log(table_name)
+    client.query "SHOW TABLES LIKE '" + table_name + "'", (error, results, fields) ->
+      cb error, results.length
+
+  db.dropTable = (table_name) ->
+    client.query "DROP TABLE " + table_name, (error, results, fields) -> return
+
+  db.insertData = (table_name, columns, data) ->
+    colstring = '('
+    i = 0
+    for col in columns
+      if i > 0
+        colstring += ', '
+      colstring += '`' + col.name.trim! + '`'
+      i += 1
+    colstring += ')'
+
+    datastring = '('
+    i = 0
+    for d in data
+      console.log(d)
+      if i > 0
+        datastring += ', '
+      datastring += '"' + d + '"'
+      i += 1
+    datastring += ')'
+
+    client.query "INSERT INTO " + table_name + " " + colstring + " VALUES " + datastring, (error, results, fields) -> 
+      console.log(error)
 
   db.log = -> 
     console.log "MySQL OK" 
     return "Some shitty strings"
 
   db.test = ->
-    client.query 'CREATE TABLE pet (name VARCHAR(20), sex CHAR(1), birth DATE, death DATE)', (error, results, fields) -> return
+    client.query "CREATE TABLE pet (name VARCHAR(20), sex CHAR(1), birth DATE, death DATE)", (error, results, fields) -> return
 
   @__MYSQL__ = db
 

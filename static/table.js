@@ -5,7 +5,10 @@ Table = (function(){
   function Table(sheetdict, data){
     this.sheet = sheetdict;
     this.sheetname = 'Sheet1';
+    // Table Specifics
     this.rows = [];
+    // Spreadsheet Data
+    this.dataval = {};
     this.title = [];
     this.footnote = [];
     this.header = [];
@@ -38,8 +41,58 @@ Table = (function(){
     }
     return this.MapHeaderData();
   };
+  Table.prototype.TupleSerialize = function(){    
+    ///////////////////////////////////////////////////////////////////
+    // Tuples for databases
+    // Sekarang 1 Tabel dulu yah :(
+    table = {};
+    table['name'] = 'table_1';
+    table['headers'] = [];
+    table['data'] = [];
+
+    // Yang simpel dulu ya :((((
+    datarow = {};
+
+    // Getting all the data CELLS that used
+    for (row of this.rows) {
+      var header = {}
+      header['name'] = row['header'];
+      header['type'] = 'VARCHAR'; // TO-DO CHANGE THIS
+      table['headers'].push(header)
+
+      for (cells of this.GetCells(row['data'])) {
+        if (!(datarow[this.GetCellRow(cells)] instanceof Array)) {
+          datarow[this.GetCellRow(cells)] = [];
+        }
+        datarow[this.GetCellRow(cells)].push(cells);
+      }
+    }
+
+    // Datarow is held the corenspondent DATA CELLS per ROWS
+    // For now, consider this as the absoulte ROWS for database
+    // Further development of so many different use cases needed
+    // console.log(datarow);
+    for (var rownum in datarow) {
+      if (!datarow.hasOwnProperty(rownum)) continue;
+
+      var obj = datarow[rownum];
+      var temprow = [];
+      for (cell of obj) {
+        temprow.push(this.sheet[this.sheetname]['sheetdict'][cell].cstr);
+      }
+      table['data'].push(temprow);
+    }
+
+    //console.log(table);
+    //
+    //////////////////////////////////////////////////////////////////////
+    return JSON.stringify(table);
+  };
+  Table.prototype.TupleDeserialize = function(sdata){
+    return JSON.parse(sdata);
+  };
   Table.prototype.Serialize = function(){
-    var data;
+    var data, table, datarow;
     data = {};
     data['title'] = this.title;
     data['footnote'] = this.footnote;
@@ -48,6 +101,7 @@ Table = (function(){
     data['startcol'] = this.startcol;
     data['endcol'] = this.endcol;
     data['rows'] = this.rows;
+
     return JSON.stringify(data);
   };
   Table.prototype.Deserialize = function(sdata){
@@ -61,15 +115,45 @@ Table = (function(){
     this.endcol = data['endcol'];
     this.rows = data['rows'];
   };
+  Table.prototype.GetCellCol = function(colname){
+    var res = colname.match(/[a-zA-Z]+/g);
+    var s = res[0];
+    var ret = 0;
+    var iter = 0;
+    while (s.length > iter) {
+      var d = s.charCodeAt(iter) - 65 + 1;
+      ret = 26 * ret + d;
+      iter++;
+    }
+    return ret;
+  };
+  Table.prototype.GetCellRow = function(colname){
+    var res = colname.match(/[0-9]+/g);
+    return parseInt(res[0]);
+  };
+  Table.prototype.GetCells = function(range){
+    var cells, c, r;
+    var startend = range.split(":");
+    cells = [];
+    c = 1; r = 1;
+    for (r = this.GetCellRow(startend[0]); r <= this.GetCellRow(startend[1]); r++) {
+      for (c = this.GetCellCol(startend[0]); c <= this.GetCellCol(startend[1]); c++) {
+        cells.push("" + SocialCalc.rcColname(c) + r);
+      } 
+    }
+    return cells;
+  };
   Table.prototype.GetDataRange = function(col){
     var minval, maxval;
     minval = Math.min.apply(Math, this.data);
     maxval = Math.max.apply(Math, this.data);
+    // Super simple.... for now :'(
     return SocialCalc.rcColname(col) + minval + ":" + SocialCalc.rcColname(col) + maxval;
   };
   Table.prototype.MapHeaderData = function(){
     var i$, to$, col, tempobj, j$, ref$, len$, h, results$ = [];
     this.rows = [];
+    // Yang di for itu kolom karena dengan asumsi bahwa tabelnya headernya horizontal
     for (i$ = this.startcol, to$ = this.endcol; i$ <= to$; ++i$) {
       col = i$;
       tempobj = {};

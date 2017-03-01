@@ -30,15 +30,67 @@
       console.log("MySQL connected as id " + client + ".threadId");
     });
     dataDir == null && (dataDir = process.cwd());
-    db.createTable = function(table_name){
-      return client.query('CREATE TABLE table_name (id INT(11))', function(error, results, fields){});
+    db.createTable = function(table_name, columns){
+      var colstring, i, i$, len$, col;
+      colstring = '(';
+      i = 0;
+      for (i$ = 0, len$ = columns.length; i$ < len$; ++i$) {
+        col = columns[i$];
+        if (i > 0) {
+          colstring += ', ';
+        }
+        colstring += '`' + col.name.trim() + '` ' + col.type + '(160)';
+        i += 1;
+      }
+      colstring += ')';
+      return client.query("CREATE TABLE " + table_name + " " + colstring, function(error, results, fields){
+        return console.log("ERROR CREATE: " + error);
+      });
+    };
+    db.isExistTable = function(table_name, cb){
+      console.log(table_name);
+      return client.query("SHOW TABLES LIKE '" + table_name + "'", function(error, results, fields){
+        return cb(error, results.length);
+      });
+    };
+    db.dropTable = function(table_name){
+      return client.query("DROP TABLE " + table_name, function(error, results, fields){});
+    };
+    db.insertData = function(table_name, columns, data){
+      var colstring, i, i$, len$, col, datastring, d;
+      colstring = '(';
+      i = 0;
+      for (i$ = 0, len$ = columns.length; i$ < len$; ++i$) {
+        col = columns[i$];
+        if (i > 0) {
+          colstring += ', ';
+        }
+        colstring += '`' + col.name.trim() + '`';
+        i += 1;
+      }
+      colstring += ')';
+      datastring = '(';
+      i = 0;
+      for (i$ = 0, len$ = data.length; i$ < len$; ++i$) {
+        d = data[i$];
+        console.log(d);
+        if (i > 0) {
+          datastring += ', ';
+        }
+        datastring += '"' + d + '"';
+        i += 1;
+      }
+      datastring += ')';
+      return client.query("INSERT INTO " + table_name + " " + colstring + " VALUES " + datastring, function(error, results, fields){
+        return console.log(error);
+      });
     };
     db.log = function(){
       console.log("MySQL OK");
       return "Some shitty strings";
     };
     db.test = function(){
-      return client.query('CREATE TABLE pet (name VARCHAR(20), sex CHAR(1), birth DATE, death DATE)', function(error, results, fields){});
+      return client.query("CREATE TABLE pet (name VARCHAR(20), sex CHAR(1), birth DATE, death DATE)", function(error, results, fields){});
     };
     return this.__MYSQL__ = db;
   };

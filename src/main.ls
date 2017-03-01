@@ -220,10 +220,22 @@
 
   @post '/_database/create': ->
     #MYSQL.createTable @body.name
-    table = new Table null, null
-    console.log(@body.table)
-    table.Deserialize @body.table
-    console.log(table.GetHTMLForm!)
+
+    tablec = new Table null, null
+    table = tablec.TupleDeserialize @body.table
+
+    # If there exists such table, delete HAHAHA
+    MYSQL.isExistTable table.name, (err, results) ->
+      if results > 0
+        console.log("Exist. Dropping Table.")
+        MYSQL.dropTable table.name
+
+      # Create the Table first
+      MYSQL.createTable table.name, table.headers
+
+      for data in table.data
+        MYSQL.insertData table.name, table.headers, data
+
 
     data =
       * status: "OK"

@@ -25,11 +25,20 @@
     return
 
   window.Save = ->
+    console.log("SAVING TO DATABASE")
     savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
-    console.log("MASUK COY")
+
+    sheet = SocialCalc.GetSpreadsheetControlObject!
+    loadsheet = new LoadSheet sheet
+    sheetdict = loadsheet.LoadSheetDict!
+
+    if !(savedData.value == null) && !(savedData.value == "")
+      table = new Table sheetdict, null
+      table.Deserialize savedData.value
+
     payload = 
       * name: SocialCalc._room
-        table: savedData.value
+        table: table.TupleSerialize!
 
     request =
       * type: "POST"
@@ -39,7 +48,7 @@
         success: (response) ->
           console.log("OK OK OK MYSQL OK OK OK")
         error: (response) ->
-          console.log("Error getting predicted data")
+          console.log("Error saving data to database")
 
     $.ajax request
     return
