@@ -7,16 +7,11 @@
   header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr></table>"
 
   window.DatabaseOnClick = !(s, t) ->
+    sheet = SocialCalc.GetSpreadsheetControlObject!
+    gview = sheet.views.database.element
     savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
 
-    sheet = SocialCalc.GetSpreadsheetControlObject!
-    loadsheet = new LoadSheet sheet
-    sheetdict = loadsheet.LoadSheetDict!
-    gview = sheet.views.database.element
-
     if savedData.value == null || savedData.value == ""
-      pr = new PredictSheetRows
-      dictTxt = pr.GenerateFromSheetFile sheetdict
       gview.innerHTML = header_div
     else
       table = new Table null, null
@@ -59,17 +54,11 @@
     sheet = SocialCalc.GetSpreadsheetControlObject!
     loadsheet = new LoadSheet sheet
     sheetdict = loadsheet.LoadSheetDict!
-    pr = new PredictSheetRows
-    featurestxt = pr.GenerateFromSheetFile sheetdict
-
-    payload = 
-      * features: featurestxt
 
     request =
-      * type: "POST"
+      * type: "GET"
         url: window.location.protocol + "//" + window.location.host + "/_framefinder/" + SocialCalc._room
         contentType: "application/json"
-        data: JSON.stringify payload
         success: (response) ->
           table = new Table sheetdict, response
           console.log(table.MapHeaderData!)
@@ -78,9 +67,6 @@
           gview.innerHTML = header_div + table.GetHTMLForm!
         error: (response) ->
           console.log("Error getting predicted data")
-
     $.ajax request
-
     return
-
   return

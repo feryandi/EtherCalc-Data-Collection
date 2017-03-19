@@ -6,6 +6,7 @@
 
   ## Helpers
   Table = require('./static/table')
+  FrameFinder = require('./static/framefinder')
 
   @include \dotcloud
   @include \player-broadcast
@@ -236,51 +237,69 @@
       for data in table.data
         MYSQL.insertData table.name, table.headers, data
 
-
     data =
       * status: "OK"
     @response.type \application/json
     @response.json 200 data
 
-  @post '/_framefinder/:room': -> 
+  @get '/_/:room/test': ->
     room = @params.room
-    content = @body.features
+    {snapshot} <~ SC._get room, IO
+    if snapshot
+      rv <~ SC[room].exportControlObject
+      
+      console.log(FrameFinder)
+
+  @get '/_framefinder/:room': -> 
     this$ = this
+    room = @params.room
 
-    basePath = '/home/ethercalc/public/'
-    filePath = basePath + room
-    featurePath = basePath + room + '_feature'
+    ## Getting the Spreadsheet data, now calculation ALL IN BACKEND
+    {snapshot} <~ SC._get room, IO
+    if snapshot
+      sheet <~ SC[room].exportControlObject
 
-    feature = (filePath, content, cb) ->
-      fs.writeFile filePath, content, (err) ->
-        if err 
-          return console.log(err);
-        cb!
+      loadsheet = new FrameFinder.LoadSheet sheet
+      sheetdict = loadsheet.LoadSheetDict!
+      pr = new FrameFinder.PredictSheetRows
+      features = pr.GenerateFromSheetFile sheetdict
 
-    crf = (filePath, featurePath, cb) ->
-      CPE = (require \child_process).exec
-      cmd = 'crf_test -m /home/ethercalc/ethercalc/crf/example/model ' + featurePath + ' > ' + filePath
-      CPE cmd, (error, stdout, stderr) ->
-        fs.readFile filePath, 'utf8', (err,data) ->
+      content = features
+
+      basePath = '/home/ethercalc/public/'
+      filePath = basePath + room
+      featurePath = basePath + room + '_feature'
+
+      feature = (filePath, content, cb) ->
+        fs.writeFile filePath, content, (err) ->
           if err 
             return console.log(err);
-          result = []
-          lines = data.split "\n"
-          for line in lines
-            obj = {}
-            elemt = line.split "\t"
-            if elemt[0] != ''
-              obj.row = elemt[0]
-              obj.type = elemt[elemt.length - 1]
-              result.push obj
-          console.log(result)
-          cb JSON.stringify result
+          cb!
 
-    feature featurePath, content, ->
-      crf filePath, featurePath, (data) ->
-        console.log(data)
-        this$.response.type \application/json
-        this$.response.json 200 data
+      crf = (filePath, featurePath, cb) ->
+        CPE = (require \child_process).exec
+        cmd = 'crf_test -m /home/ethercalc/ethercalc/crf/example/model ' + featurePath + ' > ' + filePath
+        CPE cmd, (error, stdout, stderr) ->
+          fs.readFile filePath, 'utf8', (err,data) ->
+            if err 
+              return console.log(err);
+            result = []
+            lines = data.split "\n"
+            for line in lines
+              obj = {}
+              elemt = line.split "\t"
+              if elemt[0] != ''
+                obj.row = elemt[0]
+                obj.type = elemt[elemt.length - 1]
+                result.push obj
+            console.log(result)
+            cb result
+
+      feature featurePath, content, ->
+        crf filePath, featurePath, (data) ->
+          console.log(data)
+          this$.response.type \application/json
+          this$.response.json 200 data
 
   @get '/:room.csv': ExportCSV
   @get '/:room.csv.json': ExportCSV-JSON

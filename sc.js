@@ -762,6 +762,9 @@
       w.exportCells = function(cb){
         return w._eval("JSON.stringify(window.ss.sheet.cells)", cb);
       };
+      w.exportControlObject = function(cb){
+        return w._eval("window.ss.SocialCalc.GetSpreadsheetControlObject()", cb);
+      };
       w.exportAttribs = function(cb){
         return w._eval("window.ss.sheet.attribs", cb);
       };

@@ -3,6 +3,7 @@ Table = (function(){
   Table.displayName = 'Table';
   var prototype = Table.prototype, constructor = Table;
   function Table(sheetdict, data){
+    console.log(data)
     this.sheet = sheetdict;
     this.sheetname = 'Sheet1';
     // Table Specifics
@@ -24,7 +25,8 @@ Table = (function(){
   }
   Table.prototype.ParseData = function(data){
     var jdata, i$, len$, row;
-    jdata = JSON.parse(data);
+    //jdata = JSON.parse(data);
+    jdata = data; 
     if (jdata !== null) {
       for (i$ = 0, len$ = jdata.length; i$ < len$; ++i$) {
         row = jdata[i$];

@@ -8,6 +8,7 @@
     "url": "https://github.com/audreyt/ethercalc"
   },
   "dependencies": {
+    "clusterfck": "^0.6.0",
     "cors": "*",
     "csv-parse": "^0.0.6",
     "iconv-lite": "^0.4.13",

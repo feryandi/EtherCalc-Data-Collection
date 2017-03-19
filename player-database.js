@@ -11,15 +11,11 @@
         SocialCalc = window.SocialCalc || alert('Cannot find window.SocialCalc');
         header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr></table>";
         window.DatabaseOnClick = function(s, t){
-          var savedData, sheet, loadsheet, sheetdict, gview, pr, dictTxt, table;
-          savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          var sheet, gview, savedData, table;
           sheet = SocialCalc.GetSpreadsheetControlObject();
-          loadsheet = new LoadSheet(sheet);
-          sheetdict = loadsheet.LoadSheetDict();
           gview = sheet.views.database.element;
+          savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
           if (savedData.value === null || savedData.value === "") {
-            pr = new PredictSheetRows;
-            dictTxt = pr.GenerateFromSheetFile(sheetdict);
             gview.innerHTML = header_div;
           } else {
             table = new Table(null, null);
@@ -58,21 +54,15 @@
           $.ajax(request);
         };
         window.Synchronize = function(){
-          var savedData, sheet, loadsheet, sheetdict, pr, featurestxt, payload, request;
+          var savedData, sheet, loadsheet, sheetdict, request;
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
           sheet = SocialCalc.GetSpreadsheetControlObject();
           loadsheet = new LoadSheet(sheet);
           sheetdict = loadsheet.LoadSheetDict();
-          pr = new PredictSheetRows;
-          featurestxt = pr.GenerateFromSheetFile(sheetdict);
-          payload = {
-            features: featurestxt
-          };
           request = {
-            type: "POST",
+            type: "GET",
             url: window.location.protocol + "//" + window.location.host + "/_framefinder/" + SocialCalc._room,
             contentType: "application/json",
-            data: JSON.stringify(payload),
             success: function(response){
               var table, gview;
               table = new Table(sheetdict, response);

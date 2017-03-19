@@ -1,4 +1,15 @@
-var PredictSheetRows, FeatureFormat, FeatureSheetRow, MyCell, MySheet, LoadSheet;
+var PredictSheetRows, FeatureFormat, FeatureSheetRow, MyCell, MySheet, LoadSheet, rcColname;
+
+rcColname = (function(c) {
+  if (c > 702) c = 702; // maximum number of columns - ZZ
+  if (c < 1) c = 1;
+  var collow = (c - 1) % 26 + 65;
+  var colhigh = Math.floor((c - 1) / 26);
+  if (colhigh)
+    return String.fromCharCode(colhigh + 64) + String.fromCharCode(collow);
+  else
+    return String.fromCharCode(collow);
+});
 
 PredictSheetRows = (function(){
   PredictSheetRows.displayName = 'PredictSheetRows';
@@ -53,8 +64,8 @@ FeatureSheetRow = (function(){
       rowcelldict = {};
       for (j$ = 1, to1$ = mysheet.ncolnum; j$ <= to1$; ++j$) {
         ccol = j$;
-        if (mysheet.sheetdict[SocialCalc.rcColname(ccol) + crow] !== undefined) {
-          mycell = mysheet.sheetdict[SocialCalc.rcColname(ccol) + crow];
+        if (mysheet.sheetdict[rcColname(ccol) + crow] !== undefined) {
+          mycell = mysheet.sheetdict[rcColname(ccol) + crow];
           rowcelldict[ccol - 1] = mycell;
         }
       }
@@ -572,7 +583,7 @@ MySheet = (function(){
       this.mergerowdict[rownum] = true;
       for (j$ = col1; j$ <= col2; ++j$) {
         colnum = j$;
-        obj = SocialCalc.rcColname(colnum) + rownum;
+        obj = rcColname(colnum) + rownum;
         this.mergecellset.push(obj);
       }
     }
@@ -588,7 +599,7 @@ MySheet = (function(){
       this.maxcolnum = colnum;
     }
     mycell = new MyCell(value, mtype, indents, alignstyle, boldflag, borderstyle, bgcolor, height, italicflag, underlineflag);
-    this.sheetdict[SocialCalc.rcColname(colnum) + rownum] = mycell;
+    this.sheetdict[rcColname(colnum) + rownum] = mycell;
     if (mtype === 'str') {
       return this.txt += value + ' ';
     }
@@ -706,7 +717,7 @@ LoadSheet = (function(){
       rownum = i$;
       for (j$ = 1, to1$ = this.wb.sheet.LastCol(); j$ <= to1$; ++j$) {
         colnum = j$;
-        cellName = SocialCalc.rcColname(colnum) + rownum;
+        cellName = rcColname(colnum) + rownum;
         cell = this.wb.sheet.GetAssuredCell(cellName);
         cellType = this.GetValueType(cell.valuetype);
         if (cellType > 0 || cellType < 5) {
@@ -903,3 +914,7 @@ LoadSheet = (function(){
   };
   return LoadSheet;
 }());
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {LoadSheet: LoadSheet, PredictSheetRows: PredictSheetRows};
+}

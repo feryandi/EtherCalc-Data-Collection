@@ -2,12 +2,13 @@
 (function(){
   var join$ = [].join;
   this.include = function(){
-    var Table, CPE, cmd, fs, J, csvParse, DB, SC, MYSQL, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, RealBin, DevMode, dataDir, sendFile, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
+    var Table, FrameFinder, CPE, cmd, fs, J, csvParse, DB, SC, MYSQL, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, RealBin, DevMode, dataDir, sendFile, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
     this.use('json', this.app.router, this.express['static'](__dirname));
     this.app.use('/edit', this.express['static'](__dirname));
     this.app.use('/view', this.express['static'](__dirname));
     this.app.use('/app', this.express['static'](__dirname));
     Table = require('./static/table');
+    FrameFinder = require('./static/framefinder');
     this.include('dotcloud');
     this.include('player-broadcast');
     this.include('player-graph');
@@ -351,56 +352,84 @@
         return this.response.json(200, data);
       }
     });
-    this.post({
-      '/_framefinder/:room': function(){
-        var room, content, this$, basePath, filePath, featurePath, feature, crf;
+    this.get({
+      '/_/:room/test': function(){
+        var room, this$ = this;
         room = this.params.room;
-        content = this.body.features;
-        this$ = this;
-        basePath = '/home/ethercalc/public/';
-        filePath = basePath + room;
-        featurePath = basePath + room + '_feature';
-        feature = function(filePath, content, cb){
-          return fs.writeFile(filePath, content, function(err){
-            if (err) {
-              return console.log(err);
-            }
-            return cb();
-          });
-        };
-        crf = function(filePath, featurePath, cb){
-          var CPE, cmd;
-          CPE = require('child_process').exec;
-          cmd = 'crf_test -m /home/ethercalc/ethercalc/crf/example/model ' + featurePath + ' > ' + filePath;
-          return CPE(cmd, function(error, stdout, stderr){
-            return fs.readFile(filePath, 'utf8', function(err, data){
-              var result, lines, i$, len$, line, obj, elemt;
-              if (err) {
-                return console.log(err);
-              }
-              result = [];
-              lines = data.split("\n");
-              for (i$ = 0, len$ = lines.length; i$ < len$; ++i$) {
-                line = lines[i$];
-                obj = {};
-                elemt = line.split("\t");
-                if (elemt[0] !== '') {
-                  obj.row = elemt[0];
-                  obj.type = elemt[elemt.length - 1];
-                  result.push(obj);
-                }
-              }
-              console.log(result);
-              return cb(JSON.stringify(result));
+        return SC._get(room, IO, function(arg$){
+          var snapshot;
+          snapshot = arg$.snapshot;
+          if (snapshot) {
+            return SC[room].exportControlObject(function(rv){
+              return console.log(FrameFinder);
             });
-          });
-        };
-        return feature(featurePath, content, function(){
-          return crf(filePath, featurePath, function(data){
-            console.log(data);
-            this$.response.type('application/json');
-            return this$.response.json(200, data);
-          });
+          }
+        });
+      }
+    });
+    this.get({
+      '/_framefinder/:room': function(){
+        var room, this$ = this;
+        this$ = this;
+        room = this.params.room;
+        return SC._get(room, IO, function(arg$){
+          var snapshot;
+          snapshot = arg$.snapshot;
+          if (snapshot) {
+            return SC[room].exportControlObject(function(sheet){
+              var loadsheet, sheetdict, pr, features, content, basePath, filePath, featurePath, feature, crf;
+              loadsheet = new FrameFinder.LoadSheet(sheet);
+              sheetdict = loadsheet.LoadSheetDict();
+              pr = new FrameFinder.PredictSheetRows;
+              features = pr.GenerateFromSheetFile(sheetdict);
+              content = features;
+              basePath = '/home/ethercalc/public/';
+              filePath = basePath + room;
+              featurePath = basePath + room + '_feature';
+              feature = function(filePath, content, cb){
+                return fs.writeFile(filePath, content, function(err){
+                  if (err) {
+                    return console.log(err);
+                  }
+                  return cb();
+                });
+              };
+              crf = function(filePath, featurePath, cb){
+                var CPE, cmd;
+                CPE = require('child_process').exec;
+                cmd = 'crf_test -m /home/ethercalc/ethercalc/crf/example/model ' + featurePath + ' > ' + filePath;
+                return CPE(cmd, function(error, stdout, stderr){
+                  return fs.readFile(filePath, 'utf8', function(err, data){
+                    var result, lines, i$, len$, line, obj, elemt;
+                    if (err) {
+                      return console.log(err);
+                    }
+                    result = [];
+                    lines = data.split("\n");
+                    for (i$ = 0, len$ = lines.length; i$ < len$; ++i$) {
+                      line = lines[i$];
+                      obj = {};
+                      elemt = line.split("\t");
+                      if (elemt[0] !== '') {
+                        obj.row = elemt[0];
+                        obj.type = elemt[elemt.length - 1];
+                        result.push(obj);
+                      }
+                    }
+                    console.log(result);
+                    return cb(result);
+                  });
+                });
+              };
+              return feature(featurePath, content, function(){
+                return crf(filePath, featurePath, function(data){
+                  console.log(data);
+                  this$.response.type('application/json');
+                  return this$.response.json(200, data);
+                });
+              });
+            });
+          }
         });
       }
     });

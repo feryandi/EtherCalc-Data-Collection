@@ -353,6 +353,7 @@ Worker ||= class => (code) ->
       }])
     """, (cell) -> if cell is \undefined then cb 'null' else cb cell
     w.exportCells = (cb) -> w._eval "JSON.stringify(window.ss.sheet.cells)", cb
+    w.exportControlObject = (cb) -> w._eval "window.ss.SocialCalc.GetSpreadsheetControlObject()", cb
     # eddy exportAttribs, triggerActionCell {
     w.exportAttribs = (cb) -> w._eval "window.ss.sheet.attribs", cb    
     w.triggerActionCell = (coord, cb) -> w._eval "window.ss.SocialCalc.TriggerIoAction.Email('#coord')" (emailcmd) ->
