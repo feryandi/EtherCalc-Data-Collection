@@ -3,7 +3,6 @@ Table = (function(){
   Table.displayName = 'Table';
   var prototype = Table.prototype, constructor = Table;
   function Table(sheetdict, data){
-    console.log(data)
     this.sheet = sheetdict;
     this.sheetname = 'Sheet1';
     // Table Specifics

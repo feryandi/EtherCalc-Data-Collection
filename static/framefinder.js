@@ -576,6 +576,16 @@ MySheet = (function(){
     this.mergestrarr = [];
     this.mergecellset = [];
   }
+  MySheet.prototype.GetCellsArray = function(){
+    var cellArray = []
+    for (var key in this.sheetdict) {
+      if (!this.sheetdict.hasOwnProperty(key)) continue;
+
+      var cell = this.sheetdict[key];
+      cellArray.push([key, cell.x, cell.y, cell.w, cell.h]);
+    }
+    return cellArray;
+  };
   MySheet.prototype.AddMergeCell = function(row1, row2, col1, col2){
     var i$, rownum, j$, colnum, obj;
     for (i$ = row1; i$ <= row2; ++i$) {
@@ -588,7 +598,7 @@ MySheet = (function(){
       }
     }
   };
-  MySheet.prototype.InsertCell = function(rownum, colnum, nrownum, ncolnum, mtype, indents, alignstyle, borderstyle, bgcolor, boldflag, height, italicflag, underlineflag, value){
+  MySheet.prototype.InsertCell = function(rownum, colnum, X, Y, W, H, nrownum, ncolnum, mtype, indents, alignstyle, borderstyle, bgcolor, boldflag, height, italicflag, underlineflag, value){
     var mycell;
     this.nrownum = nrownum;
     this.ncolnum = ncolnum;
@@ -598,7 +608,7 @@ MySheet = (function(){
     if (colnum > this.maxcolnum) {
       this.maxcolnum = colnum;
     }
-    mycell = new MyCell(value, mtype, indents, alignstyle, boldflag, borderstyle, bgcolor, height, italicflag, underlineflag);
+    mycell = new MyCell(X, Y, W, H, value, mtype, indents, alignstyle, boldflag, borderstyle, bgcolor, height, italicflag, underlineflag);
     this.sheetdict[rcColname(colnum) + rownum] = mycell;
     if (mtype === 'str') {
       return this.txt += value + ' ';
@@ -609,7 +619,13 @@ MySheet = (function(){
 MyCell = (function(){
   MyCell.displayName = 'MyCell';
   var prototype = MyCell.prototype, constructor = MyCell;
-  function MyCell(value, mtype, indents, alignstyle, boldflag, borderstyle, bgcolor, height, italicflag, underlineflag){
+  function MyCell(X, Y, W, H, value, mtype, indents, alignstyle, boldflag, borderstyle, bgcolor, height, italicflag, underlineflag){
+    // Cell Coordinate
+    this.x = X;
+    this.y = Y;
+    this.w = W;
+    this.h = H;
+
     this.cstr = value;
     this.mtype = mtype;
     this.indents = this.GetIndents(indents);
@@ -713,10 +729,29 @@ LoadSheet = (function(){
     sheetdict = {};
     cmysheet = new MySheet;
     str = '';
+
+    curY = 0;
+    nextY = 0;
     for (i$ = 1, to$ = this.wb.sheet.LastRow(); i$ <= to$; ++i$) {
       rownum = i$;
+
+      rh = this.wb.sheet.rowattribs.height[rownum];
+      if (rh === undefined) { rh = 15; } //TO-DO if default value changed!
+      curY += parseInt(nextY);
+      nextY = parseInt(rh);
+      curX = 0;
+      nextX = 0;
+
       for (j$ = 1, to1$ = this.wb.sheet.LastCol(); j$ <= to1$; ++j$) {
         colnum = j$;
+
+        cw = this.wb.sheet.colattribs.width[rcColname(colnum)];
+        if (cw === undefined) { cw = 80; } //TO-DO if default value changed!
+        curX += parseInt(nextX);
+        nextX = parseInt(cw);
+
+        //console.log("Cell Coord: [" + curX + ", "+ curY + "]")
+
         cellName = rcColname(colnum) + rownum;
         cell = this.wb.sheet.GetAssuredCell(cellName);
         cellType = this.GetValueType(cell.valuetype);
@@ -724,12 +759,29 @@ LoadSheet = (function(){
           cStr = cell.datavalue;
           cellDType = this.GetDataType(cell.datatype, cStr);
           cellAttr = this.wb.sheet.EncodeCellAttributes(cellName);
+
+          addX = 0;
+          addY = 0;
           if (cellAttr.rowspan.val > 1 || cellAttr.colspan.val > 1) {
             row1 = rownum;
             row2 = rownum + cellAttr.rowspan.val - 1;
             col1 = colnum;
             col2 = colnum + cellAttr.colspan.val - 1;
             cmysheet.AddMergeCell(row1, row2, col1, col2);
+
+            for (var rs = 1; rs < cellAttr.rowspan.val; rs++) {
+              rsh = this.wb.sheet.rowattribs.height[rownum + rs];
+              if (rsh === undefined) { rsh = 15; } //TO-DO if default value changed!
+              addY += parseInt(rsh);
+              console.log("Adding " + rsh + " to nextY");
+            }
+
+            for (var cs = 1; cs < cellAttr.colspan.val; cs++) {
+              csh = this.wb.sheet.colattribs.width[rcColname(colnum + cs)];
+              if (csh === undefined) { csh = 80; } //TO-DO if default value changed!
+              addX += parseInt(csh);
+              console.log("Adding " + csh + " to nextX");
+            }
           }
           if (cellDType !== null) {
             indents = parseInt(this.FeatureIndentation(cellAttr));
@@ -740,7 +792,7 @@ LoadSheet = (function(){
             height = parseInt(this.FeatureFontHeight(cellAttr));
             italicflag = parseInt(this.FeatureFontItalic(cellAttr));
             underlineflag = parseInt(this.FeatureFontUnderline(cellAttr));
-            cmysheet.InsertCell(rownum, colnum, this.wb.sheet.LastRow(), this.wb.sheet.LastCol(), cellDType, indents, alignstyle, borderstyle, bgcolor, boldflag, height, italicflag, underlineflag, cStr);
+            cmysheet.InsertCell(rownum, colnum, curX, curY, (nextX + addX), (nextY + addY), this.wb.sheet.LastRow(), this.wb.sheet.LastCol(), cellDType, indents, alignstyle, borderstyle, bgcolor, boldflag, height, italicflag, underlineflag, cStr);
           }
         }
       }

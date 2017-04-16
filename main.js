@@ -2,7 +2,7 @@
 (function(){
   var join$ = [].join;
   this.include = function(){
-    var Table, FrameFinder, CPE, cmd, fs, J, csvParse, DB, SC, MYSQL, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, RealBin, DevMode, dataDir, sendFile, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
+    var Table, FrameFinder, clusterfck, fs, J, csvParse, DB, SC, MYSQL, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, RealBin, DevMode, dataDir, sendFile, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
     this.use('json', this.app.router, this.express['static'](__dirname));
     this.app.use('/edit', this.express['static'](__dirname));
     this.app.use('/view', this.express['static'](__dirname));
@@ -14,12 +14,7 @@
     this.include('player-graph');
     this.include('player-database');
     this.include('player');
-    CPE = require('child_process').exec;
-    cmd = 'crf_test -m /home/ethercalc/ethercalc/crf/example/model /home/ethercalc/ethercalc/crf/example/feature > /home/ethercalc/public/prediction';
-    CPE(cmd, function(error, stdout, stderr){
-      console.log("CPE OK");
-      console.log("stderr: " + stderr);
-    });
+    clusterfck = require('clusterfck');
     fs = require('fs');
     J = require('j');
     csvParse = require('csv-parse');
@@ -368,6 +363,76 @@
       }
     });
     this.get({
+      '/_hierachical/:room/:ths': function(){
+        var room, thres, this$ = this;
+        this$ = this;
+        room = this.params.room;
+        thres = this.params.ths;
+        return SC._get(room, IO, function(arg$){
+          var snapshot;
+          snapshot = arg$.snapshot;
+          if (snapshot) {
+            return SC[room].exportControlObject(function(sheet){
+              var loadsheet, sheetdict, firstkey, cellData, cellDistance, clusters, leaves, flatcluster;
+              loadsheet = new FrameFinder.LoadSheet(sheet);
+              sheetdict = loadsheet.LoadSheetDict();
+              firstkey = Object.keys(sheetdict)[0];
+              cellData = sheetdict[firstkey].GetCellsArray();
+              cellDistance = function(v1, v2){
+                var t, colD, rowD, leftTop, leftBot, righTop, righBot, dist;
+                t = new Table(null, null);
+                colD = t.GetCellCol(v1[0]) - t.GetCellCol(v2[0]);
+                rowD = t.GetCellRow(v1[0]) - t.GetCellRow(v2[0]);
+                if (colD === 0) {
+                  if (rowD === 1 || rowD === -1) {
+                    return 0;
+                  }
+                }
+                if (rowD === 0) {
+                  if (colD === 1 || colD === -1) {
+                    return 0;
+                  }
+                }
+                leftTop = [[v1[1], v1[2]], [v2[1], v2[2]]];
+                leftBot = [[v1[1], v1[2] + v1[4]], [v2[1], v2[2] + v1[4]]];
+                righTop = [[v1[1] + v1[3], v1[2]], [v2[1] + v2[3], v2[2]]];
+                righBot = [[v1[1] + v1[3], v1[2] + v1[4]], [v2[1] + v2[3], v2[2] + v1[4]]];
+                if (leftTop[0] === righTop[1] && leftBot[0] === righBot[1]) {
+                  return 0;
+                }
+                if (leftTop[1] === righTop[0] && leftBot[1] === righBot[0]) {
+                  return 0;
+                }
+                if (leftTop[0] === leftBot[1] && righTop[0] === righBot[1]) {
+                  return 0;
+                }
+                if (leftTop[1] === leftBot[0] && righTop[1] === righBot[0]) {
+                  return 0;
+                }
+                dist = Math.sqrt(Math.pow((v2[1] + v2[3] / 2) - (v1[1] + v1[3] / 2), 2) + Math.pow((v2[2] + v2[4] / 2) - (v1[2] + v1[4] / 2), 2));
+                return dist;
+              };
+              clusters = clusterfck.hcluster(cellData, cellDistance, "single", thres);
+              leaves = function(hCluster){
+                if (!hCluster.left) {
+                  return [hCluster];
+                } else {
+                  return leaves(hCluster.left).concat(leaves(hCluster.right));
+                }
+              };
+              flatcluster = clusters.map(function(hcluster){
+                return leaves(hcluster).map(function(leaf){
+                  return leaf.value;
+                });
+              });
+              this$.response.type('text');
+              return this$.response.json(200, flatcluster);
+            });
+          }
+        });
+      }
+    });
+    this.get({
       '/_framefinder/:room': function(){
         var room, this$ = this;
         this$ = this;
@@ -416,14 +481,12 @@
                         result.push(obj);
                       }
                     }
-                    console.log(result);
                     return cb(result);
                   });
                 });
               };
               return feature(featurePath, content, function(){
                 return crf(filePath, featurePath, function(data){
-                  console.log(data);
                   this$.response.type('application/json');
                   return this$.response.json(200, data);
                 });

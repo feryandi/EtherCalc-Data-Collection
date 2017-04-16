@@ -14,13 +14,7 @@
   @include \player-database
   @include \player
 
-  CPE = (require \child_process).exec
-  cmd = 'crf_test -m /home/ethercalc/ethercalc/crf/example/model /home/ethercalc/ethercalc/crf/example/feature > /home/ethercalc/public/prediction'
-  CPE cmd, (error, stdout, stderr) ->
-    console.log("CPE OK")
-    console.log("stderr: " + stderr)
-    return
-
+  clusterfck = require \clusterfck
   fs = require \fs
 
   J = require \j
@@ -250,6 +244,66 @@
       
       console.log(FrameFinder)
 
+  @get '/_hierachical/:room/:ths': -> 
+    this$ = this
+    room = @params.room
+    thres = @params.ths
+
+    ## Getting the Spreadsheet data, now calculation ALL IN BACKEND
+    {snapshot} <~ SC._get room, IO
+    if snapshot
+      sheet <~ SC[room].exportControlObject
+
+      loadsheet = new FrameFinder.LoadSheet sheet
+      sheetdict = loadsheet.LoadSheetDict!
+
+      firstkey = Object.keys(sheetdict)[0]
+      cellData = sheetdict[firstkey].GetCellsArray!
+
+      cellDistance = (v1, v2) ->
+        t = new Table null, null
+        colD = t.GetCellCol(v1[0]) - t.GetCellCol(v2[0])
+        rowD = t.GetCellRow(v1[0]) - t.GetCellRow(v2[0])
+
+        # If the cell is neighboring but not diagonally neighbor
+        if colD == 0
+          if rowD == 1 or rowD == -1
+            return 0
+        if rowD == 0
+          if colD == 1 or colD == -1
+            return 0
+
+        # Else, calculate neighboring cell
+        leftTop = [[v1[1], v1[2]], [v2[1], v2[2]]]
+        leftBot = [[v1[1], (v1[2] + v1[4])], [v2[1], (v2[2] + v1[4])]]
+        righTop = [[(v1[1] + v1[3]), v1[2]], [(v2[1] + v2[3]), v2[2]]]
+        righBot = [[(v1[1] + v1[3]), (v1[2] + v1[4])], [(v2[1] + v2[3]), (v2[2] + v1[4])]]
+
+        if leftTop[0] == righTop[1] and leftBot[0] == righBot[1]
+          return 0
+        if leftTop[1] == righTop[0] and leftBot[1] == righBot[0]
+          return 0
+        if leftTop[0] == leftBot[1] and righTop[0] == righBot[1]
+          return 0
+        if leftTop[1] == leftBot[0] and righTop[1] == righBot[0]
+          return 0
+
+        # Else, calculate the distance
+        dist = Math.sqrt(Math.pow((v2[1] + (v2[3]/2)) - (v1[1] + (v1[3]/2)), 2) + Math.pow((v2[2] + (v2[4]/2)) - (v1[2] + (v1[4]/2)), 2));
+        return dist
+
+      clusters = clusterfck.hcluster(cellData, cellDistance, "single", thres)
+
+      leaves = (hCluster) ->
+        if !hCluster.left
+          return [hCluster]
+        else
+          return leaves(hCluster.left).concat(leaves(hCluster.right))
+
+      flatcluster = clusters.map((hcluster) -> leaves(hcluster).map((leaf) -> return leaf.value))
+      this$.response.type \text
+      this$.response.json 200 flatcluster
+
   @get '/_framefinder/:room': -> 
     this$ = this
     room = @params.room
@@ -292,12 +346,10 @@
                 obj.row = elemt[0]
                 obj.type = elemt[elemt.length - 1]
                 result.push obj
-            console.log(result)
             cb result
 
       feature featurePath, content, ->
         crf filePath, featurePath, (data) ->
-          console.log(data)
           this$.response.type \application/json
           this$.response.json 200 data
 
