@@ -275,17 +275,28 @@
 
         # Else, calculate neighboring cell
         leftTop = [[v1[1], v1[2]], [v2[1], v2[2]]]
-        leftBot = [[v1[1], (v1[2] + v1[4])], [v2[1], (v2[2] + v1[4])]]
+        leftBot = [[v1[1], (v1[2] + v1[4])], [v2[1], (v2[2] + v2[4])]]
         righTop = [[(v1[1] + v1[3]), v1[2]], [(v2[1] + v2[3]), v2[2]]]
-        righBot = [[(v1[1] + v1[3]), (v1[2] + v1[4])], [(v2[1] + v2[3]), (v2[2] + v1[4])]]
+        righBot = [[(v1[1] + v1[3]), (v1[2] + v1[4])], [(v2[1] + v2[3]), (v2[2] + v2[4])]]
 
-        if leftTop[0] == righTop[1] and leftBot[0] == righBot[1]
+        if (leftTop[0][0] == righTop[1][0] and leftTop[0][1] == righTop[1][1])
           return 0
-        if leftTop[1] == righTop[0] and leftBot[1] == righBot[0]
+        if (leftBot[0][0] == righBot[1][0] and leftBot[0][1] == righBot[1][1])
           return 0
-        if leftTop[0] == leftBot[1] and righTop[0] == righBot[1]
+
+        if (leftTop[1][0] == righTop[0][0] and leftTop[1][1] == righTop[0][1])
           return 0
-        if leftTop[1] == leftBot[0] and righTop[1] == righBot[0]
+        if (leftBot[1][0] == righBot[0][0] and leftBot[1][1] == righBot[0][1])
+          return 0
+
+        if (leftTop[0][0] == leftBot[1][0] and leftTop[0][1] == leftBot[1][1])
+          return 0
+        if (righTop[0][0] == righBot[1][0] and righTop[0][1] == righBot[1][1])
+          return 0
+
+        if (leftTop[1][0] == leftBot[0][0] and leftTop[1][1] == leftBot[0][1])
+          return 0
+        if (righTop[1][0] == righBot[0][0] and righTop[1][1] == righBot[0][1])
           return 0
 
         # Else, calculate the distance
