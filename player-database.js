@@ -24,6 +24,26 @@
           }
           return;
         };
+        window.SaveConfiguration = function(n){
+          var savedData, table, rows, i, i$, len$, row, e;
+          console.log("SAVE CONFIGURATION TABLE " + n);
+          savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          table = new Table(null, null);
+          table.Deserialize(savedData.value);
+          rows = table.rows;
+          i = 1;
+          for (i$ = 0, len$ = rows.length; i$ < len$; ++i$) {
+            row = rows[i$];
+            row["data"] = document.getElementById("t" + n + ".databaseData." + i).value;
+            row["header"] = document.getElementById("t" + n + ".databaseLabel." + i).value;
+            e = document.getElementById("t" + n + ".databaseType." + i);
+            row["vtype"] = e.options[e.selectedIndex].value;
+            i = i + 1;
+          }
+          table.rows = rows;
+          savedData.value = table.Serialize();
+          return console.log(table.rows);
+        };
         window.Save = function(){
           var savedData, sheet, loadsheet, sheetdict, table, payload, request;
           console.log("SAVING TO DATABASE");

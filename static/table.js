@@ -173,20 +173,20 @@ Table = (function(){
   };
   Table.prototype.GetHTMLForm = function(){
     var i, hdata, whole_table, title_div, begin_table, n, i$, len$, hd, table_start, table_label, table_data, table_validations, is_int, is_dbl, is_str, is_txt, is_bln, table_datatype, table_end, table_per_data, end_table;
-    i = 1;
+    i = 1; // Used when there are multiple tables
     hdata = this.rows;
     whole_table = "";
-    title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><center>" + "<h4>Table " + i + "</h4>" + "</center>";
+    title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><center>" + "<h4>Table " + i + "</h4>" + "</center><input type=\"button\" value=\"Save Configuration\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\">";
     whole_table += title_div;
-    begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Range</th><th>Type Validation</th><th>Range Validation</th><th>Relation Validation</th></tr></thead>";
+    begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Range</th><th>Type Validation</th><th>Range Validation</th><!--<th>Relation Validation</th>--></tr></thead>";
     whole_table += begin_table;
     n = 1;
     for (i$ = 0, len$ = hdata.length; i$ < len$; ++i$) {
       hd = hdata[i$];
       table_start = "<tr>";
-      table_label = "<td><input id=\"%id.t1.databaseLabel" + n + "\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\" value=\"" + hd['header'] + "\" /></td>";
-      table_data = "<td><input id=\"%id.t1.databaseData" + n + "\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\" value=\"" + hd['data'] + "\" /></td>";
-      table_validations = "<td><select id=\"%id.t1.databaseType" + n + "\" size=\"1\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"><option selected>None</option><option>String</option><option>Integer</option></select></td><td><input id=\"%id.t1.databaseRangeV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"%id.t1.databaseRelationV1\" onchange=\"\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"/></td>";
+      table_label = "<td><input id=\"t1.databaseLabel." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['header'] + "\" /></td>";
+      table_data = "<td><input id=\"t1.databaseData." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['data'] + "\" /></td>";
+      table_validations = "<td><select id=\"t1.databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option selected>None</option><option>String</option><option>Integer</option></select></td><td><input id=\"t1.databaseRangeV1\" onchange=\"\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"t1.databaseRelationV1\" onchange=\"\" class=\"btn btn-default btn-xs\"/></td>";
       is_int = '';
       is_dbl = '';
       is_str = '';
@@ -208,7 +208,7 @@ Table = (function(){
       case 'bln':
         is_bln = 'selected';
       }
-      table_datatype = "<td><select id=\"%id.t1.databaseType" + n + "\" size=\"1\" onfocus=\"%s.CmdGotFocus(this);\" class=\"btn btn-default btn-xs\"><option " + is_int + ">Integer</option><option " + is_dbl + ">Double</option><option " + is_str + ">String</option><option " + is_txt + ">Text</option><option " + is_bln + ">Boolean</option></select></td>";
+      table_datatype = "<td><select id=\"t1.databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option " + is_int + " value=\"int\">Integer</option><option " + is_dbl + " value=\"dbl\">Double</option><option " + is_str + " value=\"str\">String</option><option " + is_txt + " value=\"txt\">Text</option><option " + is_bln + " value=\"bln\">Boolean</option></select></td>";
       table_validations = table_datatype;
       table_end = "</tr>";
       table_per_data = table_start + table_label + table_data + table_validations + table_end;

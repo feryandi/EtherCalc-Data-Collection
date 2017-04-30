@@ -19,6 +19,30 @@
       gview.innerHTML = header_div + table.GetHTMLForm!
     return
 
+  window.SaveConfiguration = (n) ->
+    console.log("SAVE CONFIGURATION TABLE " + n)
+    savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
+
+    table = new Table null, null
+    table.Deserialize savedData.value
+
+    rows = table.rows
+    
+    i = 1
+    for row in rows
+      row["data"] = document.getElementById("t" + n + ".databaseData." + i).value
+      row["header"] = document.getElementById("t" + n + ".databaseLabel." + i).value
+      e = document.getElementById("t" + n + ".databaseType." + i)
+      row["vtype"] = e.options[e.selectedIndex].value
+      # row["vrange"] = ""
+      # row["vrel"] = ""
+      i = i + 1
+
+    table.rows = rows
+    savedData.value = table.Serialize!
+
+    console.log(table.rows)
+
   window.Save = ->
     console.log("SAVING TO DATABASE")
     savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
