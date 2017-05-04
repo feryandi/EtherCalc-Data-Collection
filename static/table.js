@@ -7,6 +7,7 @@ Table = (function(){
     this.sheetname = 'Sheet1';
     // Table Specifics
     this.rows = [];
+    this.range = "";
     // Spreadsheet Data
     this.dataval = {};
     this.title = [];
@@ -42,7 +43,7 @@ Table = (function(){
     }
     return this.MapHeaderData();
   };
-  Table.prototype.TupleSerialize = function(){    
+  Table.prototype.TupleSerializeWithChecker = function(){    
     ///////////////////////////////////////////////////////////////////
     // Tuples for databases
     // Sekarang 1 Tabel dulu yah :(
@@ -54,37 +55,133 @@ Table = (function(){
     // Yang simpel dulu ya :((((
     datarow = {};
 
+    datarange = this.RangeComponent(this.range)
+
     // Getting all the data CELLS that used
+    colnum = 0;
     for (row of this.rows) {
-      var header = {}
+      var header = {};
       header['name'] = row['header'];
       header['type'] = 'VARCHAR'; // TO-DO CHANGE THIS
-      table['headers'].push(header)
+      table['headers'].push(header);
 
-      for (cells of this.GetCells(row['data'])) {
-        if (!(datarow[this.GetCellRow(cells)] instanceof Array)) {
-          datarow[this.GetCellRow(cells)] = [];
+      rownum = 0;
+      for (i$ = datarange[1]; i$ <= datarange[3]; ++i$) {
+        if (!(table['data'][rownum] instanceof Array)){
+          table['data'][rownum] = []
         }
-        datarow[this.GetCellRow(cells)].push(cells);
+        cellname = '' + row['data'] + i$
+        cell = this.sheet[this.sheetname]['sheetdict'][cellname]
+
+        error = {};
+        error['coordinate'] = cellname;
+
+        // DATA TYPE CHECKER
+        error['error'] = "type";
+        console.log(cellname + " <~ " + row['vtype'] + " <<>> " + cell.mtype);
+
+        if (row['vtype'] == "str" && cell.mtype != "str") {
+          return error;
+        } else if (row['vtype'] == "int") {
+          if (!(cell.mtype == "int" || !isNaN(cell.cstr))) {
+            return error;
+          }
+        } else if (row['vtype'] == "dbl" && cell.mtype != "str") {
+          if (!((!isNaN(cell.cstr) && (cell.cstr).toString().indexOf('.') != -1))) {
+            return error;
+          }
+        } else if (row['vtype'] == "txt" && cell.mtype != "str") {
+          return error;
+        } else if (row['vtype'] == "bln" && cell.mtype != "str") {
+          text = cell.cstr.toString().toLowerCase();
+          if (!(text == "true" || text == "false")) {
+            return error;
+          }
+        }
+
+        // DATA RANGE CHECKER
+        // Check if the vrange is an JSONArray
+        error['error'] = "range";
+        if (row['vrange'].charAt(0) == "[" && row['vrange'].slice(-1) == "]") {
+        // EX: ["text01","text02"] (JSONArray)
+          if (!(row['vrange'].includes(cell.cstr.toString()))) {
+            error['description'] = "Not in array of accepted string";
+            console.log(error);
+            return error;
+          }
+        } else if (row['vrange'].includes("-")) {
+        // EX: 100-2100 OR 10.5-1000
+          values = row['vrange'].split("-");
+          if (values[0] > values[1]) {
+            // INVALID: ERROR
+          } else {
+            num = parseInt(cell.cstr.toString());
+            // TO-DO: Check NaN
+            if (num < values[0] || num > values[1]) {
+              error['description'] = "Values not in between";
+              console.log(error);
+              return error;
+            }
+          }
+        } else if (row['vrange'].charAt(0) == "<") {
+        // EX: <200 OR <=200
+          num = parseInt(cell.cstr.toString());
+          // TO-DO: Check NaN
+          if (row['vrange'].charAt(1) == "=") {
+            val = parseInt(row['vrange'].substr(2));
+            if (num <= val) {
+              error['description'] = "Values not in less equals than";
+              console.log(error);
+              return error;
+            }
+          } else {
+            val = parseInt(row['vrange'].substr(1));
+            if (num < val) {
+              error['description'] = "Values not in less than";
+              console.log(error);
+              return error;
+            }
+          }
+        } else if (row['vrange'].charAt(0) == ">") {
+        // EX: >200 OR >=200
+          num = parseInt(cell.cstr.toString());
+          // TO-DO: Check NaN
+          if (row['vrange'].charAt(1) == "=") {
+            val = parseInt(row['vrange'].substr(2));
+            if (num >= val) {
+              error['description'] = "Values not in greater equals than";
+              console.log(error);
+              return error;
+            }
+          } else {
+            val = parseInt(row['vrange'].substr(1));
+            if (num > val) {
+              error['description'] = "Values not in greater than";
+              console.log(error);
+              return error;
+            }            
+          }
+        } else if (row['vrange'].charAt(0) == "=") {
+        // EX: =200
+          val = parseInt(row['vrange'].substr(1));
+          if (num == val) {
+            error['description'] = "Values not in equals";
+            console.log(error);
+            return error;
+          }
+        } else {
+          // INVALID: ERROR
+        }
+
+        // DATA RELATION CHECKER, kayanya bukan disini sih harusnya soalnya ngecek antar tabel        
+
+        table['data'][rownum][colnum] = cell.cstr
+        rownum += 1;
       }
+      colnum += 1
     }
 
-    // Datarow is held the corenspondent DATA CELLS per ROWS
-    // For now, consider this as the absoulte ROWS for database
-    // Further development of so many different use cases needed
-    // console.log(datarow);
-    for (var rownum in datarow) {
-      if (!datarow.hasOwnProperty(rownum)) continue;
-
-      var obj = datarow[rownum];
-      var temprow = [];
-      for (cell of obj) {
-        temprow.push(this.sheet[this.sheetname]['sheetdict'][cell].cstr);
-      }
-      table['data'].push(temprow);
-    }
-
-    //console.log(table);
+    console.log(table);
     //
     //////////////////////////////////////////////////////////////////////
     return JSON.stringify(table);
@@ -102,6 +199,7 @@ Table = (function(){
     data['startcol'] = this.startcol;
     data['endcol'] = this.endcol;
     data['rows'] = this.rows;
+    data['range'] = this.range;
 
     return JSON.stringify(data);
   };
@@ -112,6 +210,7 @@ Table = (function(){
     this.footnote = data['footnote'];
     this.header = data['header'];
     this.data = data['data'];
+    this.range = data['range'];
     this.startcol = data['startcol'];
     this.endcol = data['endcol'];
     this.rows = data['rows'];
@@ -132,6 +231,13 @@ Table = (function(){
     var res = colname.match(/[0-9]+/g);
     return parseInt(res[0]);
   };
+  Table.prototype.RangeComponent = function(range){
+    var cells, c, r;
+    var startend = range.split(":");
+    cells = [];
+    c = 1; r = 1;
+    return [this.GetCellCol(startend[0]), this.GetCellRow(startend[0]), this.GetCellCol(startend[1]), this.GetCellRow(startend[1])];
+  };
   Table.prototype.GetCells = function(range){
     var cells, c, r;
     var startend = range.split(":");
@@ -144,12 +250,12 @@ Table = (function(){
     }
     return cells;
   };
-  Table.prototype.GetDataRange = function(col){
+  Table.prototype.GetDataRange = function(mincol, maxcol){
     var minval, maxval;
     minval = Math.min.apply(Math, this.data);
     maxval = Math.max.apply(Math, this.data);
     // Super simple.... for now :'(
-    return SocialCalc.rcColname(col) + minval + ":" + SocialCalc.rcColname(col) + maxval;
+    return SocialCalc.rcColname(mincol) + minval + ":" + SocialCalc.rcColname(maxcol) + maxval;
   };
   Table.prototype.MapHeaderData = function(){
     var i$, to$, col, tempobj, j$, ref$, len$, h, results$ = [];
@@ -163,12 +269,13 @@ Table = (function(){
         h = ref$[j$];
         tempobj['header'] += this.sheet[this.sheetname]['sheetdict'][SocialCalc.rcColname(col) + h].cstr + " ";
       }
-      tempobj['data'] = this.GetDataRange(col);
-      tempobj['vtype'] = 'str';
+      tempobj['data'] = SocialCalc.rcColname(col);
+      tempobj['vtype'] = 'non';
       tempobj['vrange'] = '';
       tempobj['vrel'] = '';
       results$.push(this.rows.push(tempobj));
     }
+    this.range = this.GetDataRange(this.startcol, this.endcol)
     return results$;
   };
   Table.prototype.GetHTMLForm = function(){
@@ -177,22 +284,27 @@ Table = (function(){
     hdata = this.rows;
     whole_table = "";
     title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><center>" + "<h4>Table " + i + "</h4>" + "</center><input type=\"button\" value=\"Save Configuration\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\">";
+    title_div += "Data Range <input id=\"t1.databaseRange\" value=\"" + this.range + "\">"
     whole_table += title_div;
-    begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Range</th><th>Type Validation</th><th>Range Validation</th><!--<th>Relation Validation</th>--></tr></thead>";
+    begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Column</th><th>Type</th><th>Permitted Values</th><!--<th>Relation</th>--></tr></thead>";
     whole_table += begin_table;
     n = 1;
     for (i$ = 0, len$ = hdata.length; i$ < len$; ++i$) {
       hd = hdata[i$];
       table_start = "<tr>";
       table_label = "<td><input id=\"t1.databaseLabel." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['header'] + "\" /></td>";
-      table_data = "<td><input id=\"t1.databaseData." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['data'] + "\" /></td>";
+      table_data = "<td><input id=\"t1.databaseData." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" style=\"max-width: 85px\" value=\"" + hd['data'] + "\" /></td>";
       table_validations = "<td><select id=\"t1.databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option selected>None</option><option>String</option><option>Integer</option></select></td><td><input id=\"t1.databaseRangeV1\" onchange=\"\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"t1.databaseRelationV1\" onchange=\"\" class=\"btn btn-default btn-xs\"/></td>";
       is_int = '';
       is_dbl = '';
       is_str = '';
       is_txt = '';
       is_bln = '';
+      is_non = '';
       switch (hd['vtype']) {
+      case 'non':
+        is_non = 'selected';
+        break;
       case 'int':
         is_int = 'selected';
         break;
@@ -208,8 +320,9 @@ Table = (function(){
       case 'bln':
         is_bln = 'selected';
       }
-      table_datatype = "<td><select id=\"t1.databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option " + is_int + " value=\"int\">Integer</option><option " + is_dbl + " value=\"dbl\">Double</option><option " + is_str + " value=\"str\">String</option><option " + is_txt + " value=\"txt\">Text</option><option " + is_bln + " value=\"bln\">Boolean</option></select></td>";
-      table_validations = table_datatype;
+      table_datatype = "<td><select id=\"t1.databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option " + is_non + " value=\"non\">None</option><option " + is_int + " value=\"int\">Integer</option><option " + is_dbl + " value=\"dbl\">Double</option><option " + is_str + " value=\"str\">String</option><option " + is_txt + " value=\"txt\">Text</option><option " + is_bln + " value=\"bln\">Boolean</option></select></td>";
+      table_permitted = "<td><input id=\"t1.databasePermitted." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\"></td>";
+      table_validations = table_datatype + table_permitted;
       table_end = "</tr>";
       table_per_data = table_start + table_label + table_data + table_validations + table_end;
       whole_table += table_per_data;

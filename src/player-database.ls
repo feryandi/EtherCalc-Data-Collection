@@ -27,14 +27,19 @@
     table.Deserialize savedData.value
 
     rows = table.rows
-    
+    table.range = document.getElementById("t" + n + ".databaseRange").value
+
     i = 1
     for row in rows
       row["data"] = document.getElementById("t" + n + ".databaseData." + i).value
       row["header"] = document.getElementById("t" + n + ".databaseLabel." + i).value
+
       e = document.getElementById("t" + n + ".databaseType." + i)
       row["vtype"] = e.options[e.selectedIndex].value
-      # row["vrange"] = ""
+
+      e = document.getElementById("t" + n + ".databasePermitted." + i)
+      row["vrange"] = e.value
+      
       # row["vrel"] = ""
       i = i + 1
 
@@ -55,9 +60,13 @@
       table = new Table sheetdict, null
       table.Deserialize savedData.value
 
-    payload = 
+    payload =
       * name: SocialCalc._room
-        table: table.TupleSerialize!
+        table: table.TupleSerializeWithChecker!
+    console.log(payload.table)
+
+    error = true
+    error = payload.table.error ? false
 
     request =
       * type: "POST"
@@ -69,7 +78,11 @@
         error: (response) ->
           console.log("Error saving data to database")
 
-    $.ajax request
+    if not error
+      $.ajax request
+    else
+      console.log("ERROR VALIDATIONS")
+
     return
 
   window.Synchronize = ->

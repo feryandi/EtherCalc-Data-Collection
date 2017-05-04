@@ -31,6 +31,7 @@
           table = new Table(null, null);
           table.Deserialize(savedData.value);
           rows = table.rows;
+          table.range = document.getElementById("t" + n + ".databaseRange").value;
           i = 1;
           for (i$ = 0, len$ = rows.length; i$ < len$; ++i$) {
             row = rows[i$];
@@ -38,6 +39,8 @@
             row["header"] = document.getElementById("t" + n + ".databaseLabel." + i).value;
             e = document.getElementById("t" + n + ".databaseType." + i);
             row["vtype"] = e.options[e.selectedIndex].value;
+            e = document.getElementById("t" + n + ".databasePermitted." + i);
+            row["vrange"] = e.value;
             i = i + 1;
           }
           table.rows = rows;
@@ -45,7 +48,7 @@
           return console.log(table.rows);
         };
         window.Save = function(){
-          var savedData, sheet, loadsheet, sheetdict, table, payload, request;
+          var savedData, sheet, loadsheet, sheetdict, table, payload, error, ref$, request;
           console.log("SAVING TO DATABASE");
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
           sheet = SocialCalc.GetSpreadsheetControlObject();
@@ -57,8 +60,11 @@
           }
           payload = {
             name: SocialCalc._room,
-            table: table.TupleSerialize()
+            table: table.TupleSerializeWithChecker()
           };
+          console.log(payload.table);
+          error = true;
+          error = (ref$ = payload.table.error) != null ? ref$ : false;
           request = {
             type: "POST",
             url: window.location.protocol + "//" + window.location.host + "/_database/create",
@@ -71,7 +77,11 @@
               return console.log("Error saving data to database");
             }
           };
-          $.ajax(request);
+          if (!error) {
+            $.ajax(request);
+          } else {
+            console.log("ERROR VALIDATIONS");
+          }
         };
         window.Synchronize = function(){
           var savedData, sheet, loadsheet, sheetdict, request;
