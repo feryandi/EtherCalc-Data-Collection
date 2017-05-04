@@ -290,8 +290,9 @@ Table = (function(){
     i = 1; // Used when there are multiple tables
     hdata = this.rows;
     whole_table = "";
-    title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><center>" + "<h4>Table " + i + "</h4>" + "</center><input type=\"button\" value=\"Save Configuration\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\">";
-    title_div += "Data Range <input id=\"t1.databaseRange\" value=\"" + this.range + "\">"
+    title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><table style=\"padding-top: 15px;padding-bottom: 15px;\"><tr><td width=\"55%\" style=\"padding-left:20px;\">" + "<strong>Table " + i + "</strong></td>";
+    title_div += "<td width=\"35%\" style=\"text-align: right;\">Data Range <input id=\"t1.databaseRange\" class=\"btn btn-default btn-xs\" style=\"max-width: 105px\" value=\"" + this.range + "\"></td>";
+    title_div += "<td width=\"10%\" style=\"text-align: right;\"><input type=\"button\" value=\"Save\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\"></td></tr></table>";
     whole_table += title_div;
     begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Column</th><th>Type</th><th>Permitted Values</th><!--<th>Relation</th>--></tr></thead>";
     whole_table += begin_table;
