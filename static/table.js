@@ -102,7 +102,9 @@ Table = (function(){
         // DATA RANGE CHECKER
         // Check if the vrange is an JSONArray
         error['error'] = "range";
+        console.log(cellname + " <~ r: " + row['vrange']);
         if (row['vrange'].charAt(0) == "[" && row['vrange'].slice(-1) == "]") {
+          console.log("ARRAY");
         // EX: ["text01","text02"] (JSONArray)
           if (!(row['vrange'].includes(cell.cstr.toString()))) {
             error['description'] = "Not in array of accepted string";
@@ -110,6 +112,7 @@ Table = (function(){
             return error;
           }
         } else if (row['vrange'].includes("-")) {
+          console.log("BETWEEN");
         // EX: 100-2100 OR 10.5-1000
           values = row['vrange'].split("-");
           if (values[0] > values[1]) {
@@ -124,53 +127,57 @@ Table = (function(){
             }
           }
         } else if (row['vrange'].charAt(0) == "<") {
+          console.log("LESS");
         // EX: <200 OR <=200
           num = parseInt(cell.cstr.toString());
           // TO-DO: Check NaN
           if (row['vrange'].charAt(1) == "=") {
             val = parseInt(row['vrange'].substr(2));
-            if (num <= val) {
+            if (!(num <= val)) {
               error['description'] = "Values not in less equals than";
               console.log(error);
               return error;
             }
           } else {
             val = parseInt(row['vrange'].substr(1));
-            if (num < val) {
+            if (!(num < val)) {
               error['description'] = "Values not in less than";
               console.log(error);
               return error;
             }
           }
         } else if (row['vrange'].charAt(0) == ">") {
+          console.log("GREATER");
         // EX: >200 OR >=200
           num = parseInt(cell.cstr.toString());
           // TO-DO: Check NaN
           if (row['vrange'].charAt(1) == "=") {
             val = parseInt(row['vrange'].substr(2));
-            if (num >= val) {
+            if (!(num >= val)) {
               error['description'] = "Values not in greater equals than";
               console.log(error);
               return error;
             }
           } else {
             val = parseInt(row['vrange'].substr(1));
-            if (num > val) {
+            if (!(num > val)) {
               error['description'] = "Values not in greater than";
               console.log(error);
               return error;
             }            
           }
         } else if (row['vrange'].charAt(0) == "=") {
+          console.log("EQUAL");
         // EX: =200
           val = parseInt(row['vrange'].substr(1));
-          if (num == val) {
+          if (num != val) {
             error['description'] = "Values not in equals";
             console.log(error);
             return error;
           }
         } else {
-          // INVALID: ERROR
+          console.log("ELSE");
+          // KOSONG
         }
 
         // DATA RELATION CHECKER, kayanya bukan disini sih harusnya soalnya ngecek antar tabel        
@@ -321,7 +328,7 @@ Table = (function(){
         is_bln = 'selected';
       }
       table_datatype = "<td><select id=\"t1.databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option " + is_non + " value=\"non\">None</option><option " + is_int + " value=\"int\">Integer</option><option " + is_dbl + " value=\"dbl\">Double</option><option " + is_str + " value=\"str\">String</option><option " + is_txt + " value=\"txt\">Text</option><option " + is_bln + " value=\"bln\">Boolean</option></select></td>";
-      table_permitted = "<td><input id=\"t1.databasePermitted." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\"></td>";
+      table_permitted = "<td><input id=\"t1.databasePermitted." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['vrange'] + "\" ></td>";
       table_validations = table_datatype + table_permitted;
       table_end = "</tr>";
       table_per_data = table_start + table_label + table_data + table_validations + table_end;
