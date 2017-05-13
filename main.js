@@ -355,9 +355,7 @@
           var snapshot;
           snapshot = arg$.snapshot;
           if (snapshot) {
-            return SC[room].exportControlObject(function(rv){
-              return console.log(FrameFinder);
-            });
+            return SC[room].exportControlObject(function(rv){});
           }
         });
       }

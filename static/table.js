@@ -196,6 +196,9 @@ Table = (function(){
   Table.prototype.TupleDeserialize = function(sdata){
     return JSON.parse(sdata);
   };
+  Table.prototype.IsHasData = function(){
+    return this.data.length > 0;
+  };
   Table.prototype.Serialize = function(){
     var data, table, datarow;
     data = {};

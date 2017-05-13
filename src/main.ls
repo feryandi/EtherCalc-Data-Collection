@@ -242,8 +242,6 @@
     if snapshot
       rv <~ SC[room].exportControlObject
       
-      console.log(FrameFinder)
-
   @get '/_hierachical/:room/:ths': -> 
     this$ = this
     room = @params.room

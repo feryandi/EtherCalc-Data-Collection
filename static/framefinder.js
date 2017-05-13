@@ -60,19 +60,24 @@ FeatureSheetRow = (function(){
   FeatureSheetRow.prototype.GenerateSingularFeatureCrf = function(mysheet, sheetname, sc, ec, sr, er){
     var feadict, i$, to$, crow, rowcelldict, j$, to1$, ccol, mycell, blankflag;
     feadict = {};
+    console.log("SC: " + sc);
+    console.log("EC: " + ec);
+    console.log("SR: " + sr);
+    console.log("ER: " + er);
     // batesin barisnya disini bisa
-    for (i$ = sr, to$ = er; i$ <= to$; ++i$) {
+    crow = parseInt(sr);
+    while (crow <= parseInt(er)) {
     // for (i$ = 1, to$ = mysheet.nrownum; i$ <= to$; ++i$) {
-      crow = i$;
       rowcelldict = {};
       // disini dibatesin dari col berapa sampe col berapanya
-      for (j$ = sc, to1$ = ec; j$ <= to1$; ++j$) {
+      ccol = parseInt(sc);
+      while (ccol <= parseInt(ec)) {
       // for (j$ = 1, to1$ = mysheet.ncolnum; j$ <= to1$; ++j$) {
-        ccol = j$;
         if (mysheet.sheetdict[rcColname(ccol) + crow] !== undefined) {
           mycell = mysheet.sheetdict[rcColname(ccol) + crow];
           rowcelldict[ccol - 1] = mycell;
         }
+        ccol++;
       }
       if (Object.keys(rowcelldict).length !== 0) {
         if (feadict.hasOwnProperty(crow - 1)) {
@@ -82,6 +87,7 @@ FeatureSheetRow = (function(){
         }
         feadict[crow] = this.GenerateFeatureByRowCrf(crow, rowcelldict, mysheet, blankflag);
       }
+      crow++;
     }
     return feadict;
   };

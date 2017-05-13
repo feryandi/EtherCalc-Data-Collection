@@ -91,15 +91,37 @@
           sheetdict = loadsheet.LoadSheetDict();
           request = {
             type: "GET",
-            url: window.location.protocol + "//" + window.location.host + "/_framefinder/" + SocialCalc._room,
+            url: window.location.protocol + "//" + window.location.host + "/_hierachical/" + SocialCalc._room + "/20",
             contentType: "application/json",
             success: function(response){
-              var table, gview;
-              table = new Table(sheetdict, response);
-              console.log(table.MapHeaderData());
-              gview = sheet.views.database.element;
-              savedData.value = table.Serialize();
-              return gview.innerHTML = header_div + table.GetHTMLForm();
+              var raw, links, data, i$, len$, cluster, link;
+              raw = [];
+              links = [];
+              data = JSON.parse(response);
+              for (i$ = 0, len$ = data.length; i$ < len$; ++i$) {
+                cluster = data[i$];
+                console.log(cluster);
+                link = "" + window.location.protocol + "//" + window.location.host + "/_framefinder/" + SocialCalc._room + "/" + cluster.sc + "/" + cluster.ec + "/" + cluster.sr + "/" + cluster.er;
+                raw.push(link);
+                links.push($.ajax(link));
+              }
+              console.log(raw);
+              return $.when.apply($, links).done(function(){
+                return $.each(arguments, function(i, d){
+                  var data, table, gview;
+                  data = d[0];
+                  if (data.length > 0) {
+                    console.log(data);
+                    table = new Table(sheetdict, data);
+                    if (table.IsHasData()) {
+                      console.log(table.Serialize());
+                      gview = sheet.views.database.element;
+                      savedData.value = table.Serialize();
+                      return gview.innerHTML = header_div + table.GetHTMLForm();
+                    }
+                  }
+                });
+              });
             },
             error: function(response){
               return console.log("Error getting predicted data");
