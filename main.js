@@ -373,7 +373,7 @@
           snapshot = arg$.snapshot;
           if (snapshot) {
             return SC[room].exportControlObject(function(sheet){
-              var loadsheet, sheetdict, firstkey, cellData, cellDistance, clusters, leaves, flatcluster;
+              var loadsheet, sheetdict, firstkey, cellData, cellDistance, clusters, leaves, flatcluster, tablec, rangecluster, i$, len$, cluster, cl, j$, len1$, cell, col, row;
               loadsheet = new FrameFinder.LoadSheet(sheet);
               sheetdict = loadsheet.LoadSheetDict();
               firstkey = Object.keys(sheetdict)[0];
@@ -437,18 +437,51 @@
                   return leaf.value;
                 });
               });
+              tablec = new Table(null, null);
+              rangecluster = [];
+              for (i$ = 0, len$ = flatcluster.length; i$ < len$; ++i$) {
+                cluster = flatcluster[i$];
+                cl = {};
+                cl.sc = 9999;
+                cl.ec = 0;
+                cl.sr = 9999;
+                cl.er = 0;
+                for (j$ = 0, len1$ = cluster.length; j$ < len1$; ++j$) {
+                  cell = cluster[j$];
+                  col = tablec.GetCellCol(cell[0]);
+                  row = tablec.GetCellRow(cell[0]);
+                  if (cl.sc >= col) {
+                    cl.sc = col;
+                  }
+                  if (cl.ec <= col) {
+                    cl.ec = col;
+                  }
+                  if (cl.sr >= row) {
+                    cl.sr = row;
+                  }
+                  if (cl.er <= row) {
+                    cl.er = row;
+                  }
+                }
+                rangecluster.push(cl);
+              }
               this$.response.type('text');
-              return this$.response.json(200, flatcluster);
+              return this$.response.json(200, rangecluster);
             });
           }
         });
       }
     });
     this.get({
-      '/_framefinder/:room': function(){
-        var room, this$ = this;
+      '/_framefinder/:room/:sc/:ec/:sr/:er': function(){
+        var room, sc, ec, sr, er, thres, this$ = this;
         this$ = this;
         room = this.params.room;
+        sc = this.params.sc;
+        ec = this.params.ec;
+        sr = this.params.sr;
+        er = this.params.er;
+        thres = 20;
         return SC._get(room, IO, function(arg$){
           var snapshot;
           snapshot = arg$.snapshot;
@@ -458,7 +491,7 @@
               loadsheet = new FrameFinder.LoadSheet(sheet);
               sheetdict = loadsheet.LoadSheetDict();
               pr = new FrameFinder.PredictSheetRows;
-              features = pr.GenerateFromSheetFile(sheetdict);
+              features = pr.GenerateFromSheetFile(sheetdict, sc, ec, sr, er);
               content = features;
               basePath = '/home/ethercalc/public/';
               filePath = basePath + room;

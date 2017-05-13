@@ -17,7 +17,8 @@ PredictSheetRows = (function(){
   function PredictSheetRows(){
     this.fea_row = new FeatureSheetRow;
   }
-  PredictSheetRows.prototype.GenerateFromSheetFile = function(sheetdict){
+  PredictSheetRows.prototype.GenerateFromSheetFile = function(sheetdict, sc, ec, sr, er){
+    // start here for support multi table cluster
     var strout, i$, own$ = {}.hasOwnProperty;
     strout = '';
     for (i$ in sheetdict) if (own$.call(sheetdict, i$)) {
@@ -26,7 +27,7 @@ PredictSheetRows = (function(){
     return strout;
     function fn$(sheetname, mysheet){
       var feadict, i$, own$ = {}.hasOwnProperty;
-      feadict = this.fea_row.GenerateSingularFeatureCrf(mysheet, sheetname);
+      feadict = this.fea_row.GenerateSingularFeatureCrf(mysheet, sheetname, sc, ec, sr, er);
       for (i$ in feadict) if (own$.call(feadict, i$)) {
         (fn$.call(this, i$, feadict[i$]));
       }
@@ -56,13 +57,17 @@ FeatureSheetRow = (function(){
     this.myformat = new FeatureFormat;
     this.goodrowset = [];
   }
-  FeatureSheetRow.prototype.GenerateSingularFeatureCrf = function(mysheet, sheetname){
+  FeatureSheetRow.prototype.GenerateSingularFeatureCrf = function(mysheet, sheetname, sc, ec, sr, er){
     var feadict, i$, to$, crow, rowcelldict, j$, to1$, ccol, mycell, blankflag;
     feadict = {};
-    for (i$ = 1, to$ = mysheet.nrownum; i$ <= to$; ++i$) {
+    // batesin barisnya disini bisa
+    for (i$ = sr, to$ = er; i$ <= to$; ++i$) {
+    // for (i$ = 1, to$ = mysheet.nrownum; i$ <= to$; ++i$) {
       crow = i$;
       rowcelldict = {};
-      for (j$ = 1, to1$ = mysheet.ncolnum; j$ <= to1$; ++j$) {
+      // disini dibatesin dari col berapa sampe col berapanya
+      for (j$ = sc, to1$ = ec; j$ <= to1$; ++j$) {
+      // for (j$ = 1, to1$ = mysheet.ncolnum; j$ <= to1$; ++j$) {
         ccol = j$;
         if (mysheet.sheetdict[rcColname(ccol) + crow] !== undefined) {
           mycell = mysheet.sheetdict[rcColname(ccol) + crow];
@@ -582,7 +587,7 @@ MySheet = (function(){
       if (!this.sheetdict.hasOwnProperty(key)) continue;
 
       var cell = this.sheetdict[key];
-      cellArray.push([key, cell.x, cell.y, cell.w, cell.h]);
+      cellArray.push([key, cell.x, cell.y, cell.w, cell.h, , ]);
     }
     return cellArray;
   };

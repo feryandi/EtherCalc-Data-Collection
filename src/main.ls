@@ -312,12 +312,41 @@
           return leaves(hCluster.left).concat(leaves(hCluster.right))
 
       flatcluster = clusters.map((hcluster) -> leaves(hcluster).map((leaf) -> return leaf.value))
-      this$.response.type \text
-      this$.response.json 200 flatcluster
 
-  @get '/_framefinder/:room': -> 
+      tablec = new Table null, null
+      rangecluster = []
+      for cluster in flatcluster
+        cl = {}
+        cl.sc = 9999 #HAHA
+        cl.ec = 0
+        cl.sr = 9999 #hahahaha
+        cl.er = 0
+        for cell in cluster
+          col = tablec.GetCellCol(cell[0])
+          row = tablec.GetCellRow(cell[0])
+          if cl.sc >= col
+            cl.sc = col
+          if cl.ec <= col
+            cl.ec = col
+          if cl.sr >= row
+            cl.sr = row
+          if cl.er <= row
+            cl.er = row
+        rangecluster.push(cl)
+
+      this$.response.type \text
+      this$.response.json 200 rangecluster
+
+  @get '/_framefinder/:room/:sc/:ec/:sr/:er': ->
     this$ = this
     room = @params.room
+
+    sc = @params.sc
+    ec = @params.ec
+    sr = @params.sr
+    er = @params.er
+
+    thres = 20 ### FOR NOW THIS WORKS
 
     ## Getting the Spreadsheet data, now calculation ALL IN BACKEND
     {snapshot} <~ SC._get room, IO
@@ -326,8 +355,9 @@
 
       loadsheet = new FrameFinder.LoadSheet sheet
       sheetdict = loadsheet.LoadSheetDict!
+
       pr = new FrameFinder.PredictSheetRows
-      features = pr.GenerateFromSheetFile sheetdict
+      features = pr.GenerateFromSheetFile sheetdict, sc, ec, sr, er
 
       content = features
 
