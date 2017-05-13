@@ -360,8 +360,8 @@
       content = features
 
       basePath = '/home/ethercalc/public/'
-      filePath = basePath + room
-      featurePath = basePath + room + '_feature'
+      filePath = basePath + room + sc + ec + sr + er
+      featurePath = basePath + room + sc + ec + sr + er + '_feature'
 
       feature = (filePath, content, cb) ->
         fs.writeFile filePath, content, (err) ->
@@ -378,6 +378,7 @@
               return console.log(err);
             result = []
             lines = data.split "\n"
+            console.log(lines)
             for line in lines
               obj = {}
               elemt = line.split "\t"
@@ -389,6 +390,7 @@
 
       feature featurePath, content, ->
         crf filePath, featurePath, (data) ->
+          console.log(data)
           this$.response.type \application/json
           this$.response.json 200 data
 

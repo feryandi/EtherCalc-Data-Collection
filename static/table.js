@@ -16,9 +16,11 @@ Table = (function(){
     this.data = [];
     this.startcol = 1;
     this.endcol = 1;
-    if (sheetdict !== undefined && sheetdict !== null) {
-      this.endcol = this.sheet[this.sheetname]['maxcolnum'];
-    }
+    this.rawdata = data;
+    // This only works if only table is vertically aligned
+    // if (sheetdict !== undefined && sheetdict !== null) {
+    //   this.endcol = this.sheet[this.sheetname]['maxcolnum'];
+    // }
     if (data !== undefined && data !== null) {
       this.ParseData(data);
     }
@@ -26,6 +28,7 @@ Table = (function(){
   Table.prototype.ParseData = function(data){
     var jdata, i$, len$, row;
     //jdata = JSON.parse(data);
+    console.log(data);
     jdata = data; 
     if (jdata !== null) {
       for (i$ = 0, len$ = jdata.length; i$ < len$; ++i$) {
@@ -196,6 +199,13 @@ Table = (function(){
   Table.prototype.TupleDeserialize = function(sdata){
     return JSON.parse(sdata);
   };
+  Table.prototype.SetColumnRange = function(startcol, endcol){
+    this.startcol = startcol;
+    this.endcol = endcol;
+    if (this.rawdata !== undefined && this.rawdata !== null) {
+      this.ParseData(this.rawdata);
+    }
+  };
   Table.prototype.IsHasData = function(){
     return this.data.length > 0;
   };
@@ -277,7 +287,11 @@ Table = (function(){
       tempobj['header'] = "";
       for (j$ = 0, len$ = (ref$ = this.header).length; j$ < len$; ++j$) {
         h = ref$[j$];
-        tempobj['header'] += this.sheet[this.sheetname]['sheetdict'][SocialCalc.rcColname(col) + h].cstr + " ";
+        console.log(SocialCalc.rcColname(col) + h);
+        hcell = this.sheet[this.sheetname]['sheetdict'][SocialCalc.rcColname(col) + h]
+        if (hcell) {
+          tempobj['header'] += this.sheet[this.sheetname]['sheetdict'][SocialCalc.rcColname(col) + h].cstr + " ";
+        }
       }
       tempobj['data'] = SocialCalc.rcColname(col);
       tempobj['vtype'] = 'non';
@@ -288,9 +302,9 @@ Table = (function(){
     this.range = this.GetDataRange(this.startcol, this.endcol)
     return results$;
   };
-  Table.prototype.GetHTMLForm = function(){
+  Table.prototype.GetHTMLForm = function(number){
     var i, hdata, whole_table, title_div, begin_table, n, i$, len$, hd, table_start, table_label, table_data, table_validations, is_int, is_dbl, is_str, is_txt, is_bln, table_datatype, table_end, table_per_data, end_table;
-    i = 1; // Used when there are multiple tables
+    i = number; // Used when there are multiple tables
     hdata = this.rows;
     whole_table = "";
     title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><table style=\"padding-top: 15px;padding-bottom: 15px;\"><tr><td width=\"55%\" style=\"padding-left:20px;\">" + "<strong>Table " + i + "</strong></td>";

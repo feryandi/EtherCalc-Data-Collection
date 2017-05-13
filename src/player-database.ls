@@ -92,34 +92,42 @@
     loadsheet = new LoadSheet sheet
     sheetdict = loadsheet.LoadSheetDict!
 
+    getLink = (sc, ec, sr, er) ->
+      return "" + window.location.protocol + "//" + window.location.host + "/_framefinder/" + SocialCalc._room + "/" + sc + "/" + ec + "/" + sr + "/" + er
+
     request =
       * type: "GET"
         url: window.location.protocol + "//" + window.location.host + "/_hierachical/" + SocialCalc._room + "/20"
         contentType: "application/json"
         success: (response) ->
-          raw = []
           links = []
+          clusters = []
+          raw = []
+
           data = JSON.parse response
           for cluster in data
-            console.log(cluster)
-            link = "" + window.location.protocol + "//" + window.location.host + "/_framefinder/" + SocialCalc._room + "/" + cluster.sc + "/" + cluster.ec + "/" + cluster.sr + "/" + cluster.er
-            raw.push link
-            links.push $.ajax link
+            raw.push getLink(cluster.sc, cluster.ec, cluster.sr, cluster.er)
+            links.push $.get(getLink(cluster.sc, cluster.ec, cluster.sr, cluster.er))
+            clusters.push [cluster.sc, cluster.ec, cluster.sr, cluster.er]
 
           console.log(raw)
+          gview = sheet.views.database.element
+          gview.innerHTML = header_div
+          total = 0
+
           ## Start flooding API
           $.when.apply($, links).done ->
             $.each arguments, (i, d) ->
               data = d[0]
               if data.length > 0
-                console.log(data)
                 ## MASIH BUAT 1 TABEL DATA, NEED TO EXPAND :)
                 table = new Table sheetdict, data
+                table.SetColumnRange(parseInt(clusters[i][0]), parseInt(clusters[i][1]))
                 if table.IsHasData!
+                  total += 1
                   console.log(table.Serialize!)
-                  gview = sheet.views.database.element
                   savedData.value = table.Serialize!
-                  gview.innerHTML = header_div + table.GetHTMLForm!
+                  gview.innerHTML += table.GetHTMLForm total
 
         error: (response) ->
           console.log("Error getting predicted data")

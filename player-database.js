@@ -84,40 +84,46 @@
           }
         };
         window.Synchronize = function(){
-          var savedData, sheet, loadsheet, sheetdict, request;
+          var savedData, sheet, loadsheet, sheetdict, getLink, request;
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
           sheet = SocialCalc.GetSpreadsheetControlObject();
           loadsheet = new LoadSheet(sheet);
           sheetdict = loadsheet.LoadSheetDict();
+          getLink = function(sc, ec, sr, er){
+            return "" + window.location.protocol + "//" + window.location.host + "/_framefinder/" + SocialCalc._room + "/" + sc + "/" + ec + "/" + sr + "/" + er;
+          };
           request = {
             type: "GET",
             url: window.location.protocol + "//" + window.location.host + "/_hierachical/" + SocialCalc._room + "/20",
             contentType: "application/json",
             success: function(response){
-              var raw, links, data, i$, len$, cluster, link;
-              raw = [];
+              var links, clusters, raw, data, i$, len$, cluster, gview, total;
               links = [];
+              clusters = [];
+              raw = [];
               data = JSON.parse(response);
               for (i$ = 0, len$ = data.length; i$ < len$; ++i$) {
                 cluster = data[i$];
-                console.log(cluster);
-                link = "" + window.location.protocol + "//" + window.location.host + "/_framefinder/" + SocialCalc._room + "/" + cluster.sc + "/" + cluster.ec + "/" + cluster.sr + "/" + cluster.er;
-                raw.push(link);
-                links.push($.ajax(link));
+                raw.push(getLink(cluster.sc, cluster.ec, cluster.sr, cluster.er));
+                links.push($.get(getLink(cluster.sc, cluster.ec, cluster.sr, cluster.er)));
+                clusters.push([cluster.sc, cluster.ec, cluster.sr, cluster.er]);
               }
               console.log(raw);
+              gview = sheet.views.database.element;
+              gview.innerHTML = header_div;
+              total = 0;
               return $.when.apply($, links).done(function(){
                 return $.each(arguments, function(i, d){
-                  var data, table, gview;
+                  var data, table;
                   data = d[0];
                   if (data.length > 0) {
-                    console.log(data);
                     table = new Table(sheetdict, data);
+                    table.SetColumnRange(parseInt(clusters[i][0]), parseInt(clusters[i][1]));
                     if (table.IsHasData()) {
+                      total += 1;
                       console.log(table.Serialize());
-                      gview = sheet.views.database.element;
                       savedData.value = table.Serialize();
-                      return gview.innerHTML = header_div + table.GetHTMLForm();
+                      return gview.innerHTML += table.GetHTMLForm(total);
                     }
                   }
                 });

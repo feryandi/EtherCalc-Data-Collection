@@ -784,14 +784,12 @@ LoadSheet = (function(){
               rsh = this.wb.sheet.rowattribs.height[rownum + rs];
               if (rsh === undefined) { rsh = 15; } //TO-DO if default value changed!
               addY += parseInt(rsh);
-              console.log("Adding " + rsh + " to nextY");
             }
 
             for (var cs = 1; cs < cellAttr.colspan.val; cs++) {
               csh = this.wb.sheet.colattribs.width[rcColname(colnum + cs)];
               if (csh === undefined) { csh = 80; } //TO-DO if default value changed!
               addX += parseInt(csh);
-              console.log("Adding " + csh + " to nextX");
             }
           }
           if (cellDType !== null) {

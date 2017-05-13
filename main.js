@@ -492,8 +492,8 @@
               features = pr.GenerateFromSheetFile(sheetdict, sc, ec, sr, er);
               content = features;
               basePath = '/home/ethercalc/public/';
-              filePath = basePath + room;
-              featurePath = basePath + room + '_feature';
+              filePath = basePath + room + sc + ec + sr + er;
+              featurePath = basePath + room + sc + ec + sr + er + '_feature';
               feature = function(filePath, content, cb){
                 return fs.writeFile(filePath, content, function(err){
                   if (err) {
@@ -514,6 +514,7 @@
                     }
                     result = [];
                     lines = data.split("\n");
+                    console.log(lines);
                     for (i$ = 0, len$ = lines.length; i$ < len$; ++i$) {
                       line = lines[i$];
                       obj = {};
@@ -530,6 +531,7 @@
               };
               return feature(featurePath, content, function(){
                 return crf(filePath, featurePath, function(data){
+                  console.log(data);
                   this$.response.type('application/json');
                   return this$.response.json(200, data);
                 });
