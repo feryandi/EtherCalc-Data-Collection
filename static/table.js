@@ -27,6 +27,10 @@ Table = (function(){
   }
   Table.prototype.ParseData = function(data){
     var jdata, i$, len$, row;
+    this.title = [];
+    this.footnote = [];
+    this.header = [];
+    this.data = [];
     //jdata = JSON.parse(data);
     console.log(data);
     jdata = data; 
@@ -226,6 +230,7 @@ Table = (function(){
   Table.prototype.Deserialize = function(sdata){
     var data;
     data = JSON.parse(sdata);
+    console.log(data);
     this.title = data['title'];
     this.footnote = data['footnote'];
     this.header = data['header'];
@@ -234,6 +239,7 @@ Table = (function(){
     this.startcol = data['startcol'];
     this.endcol = data['endcol'];
     this.rows = data['rows'];
+    console.log(this.rows);
   };
   Table.prototype.GetCellCol = function(colname){
     var res = colname.match(/[a-zA-Z]+/g);

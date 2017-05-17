@@ -14,17 +14,24 @@
     if savedData.value == null || savedData.value == ""
       gview.innerHTML = header_div
     else
-      table = new Table null, null
-      table.Deserialize savedData.value
-      gview.innerHTML = header_div + table.GetHTMLForm!
+      gview.innerHTML = header_div
+      console.log(savedData.value)
+      sd = JSON.parse(savedData.value)
+      i = 1
+      for t in sd
+        table = new Table null, null
+        table.Deserialize JSON.stringify(t)
+        gview.innerHTML += table.GetHTMLForm i
+        i++
     return
 
   window.SaveConfiguration = (n) ->
     console.log("SAVE CONFIGURATION TABLE " + n)
     savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
+    sd = JSON.parse(savedData.value)
 
     table = new Table null, null
-    table.Deserialize savedData.value
+    table.Deserialize JSON.stringify(sd[n])
 
     rows = table.rows
     table.range = document.getElementById("t" + n + ".databaseRange").value
@@ -44,9 +51,8 @@
       i = i + 1
 
     table.rows = rows
-    savedData.value = table.Serialize!
-
-    console.log(table.rows)
+    sd[n] = JSON.parse(table.Serialize!)
+    savedData.value = JSON.stringify(sd)
 
   window.Save = ->
     console.log("SAVING TO DATABASE")
@@ -116,19 +122,21 @@
           total = 0
 
           ## Start flooding API
+          sd = []
+
           $.when.apply($, links).done ->
             $.each arguments, (i, d) ->
               data = d[0]
               if data.length > 0
-                ## MASIH BUAT 1 TABEL DATA, NEED TO EXPAND :)
                 table = new Table sheetdict, data
                 table.SetColumnRange(parseInt(clusters[i][0]), parseInt(clusters[i][1]))
                 if table.IsHasData!
                   total += 1
                   console.log(table.Serialize!)
-                  savedData.value = table.Serialize!
+                  sd.push JSON.parse(table.Serialize!)
                   gview.innerHTML += table.GetHTMLForm total
-
+            savedData.value = JSON.stringify sd
+        
         error: (response) ->
           console.log("Error getting predicted data")
     $.ajax request    

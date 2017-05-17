@@ -11,25 +11,34 @@
         SocialCalc = window.SocialCalc || alert('Cannot find window.SocialCalc');
         header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr></table>";
         window.DatabaseOnClick = function(s, t){
-          var sheet, gview, savedData, table;
+          var sheet, gview, savedData, sd, i, i$, len$, table;
           sheet = SocialCalc.GetSpreadsheetControlObject();
           gview = sheet.views.database.element;
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
           if (savedData.value === null || savedData.value === "") {
             gview.innerHTML = header_div;
           } else {
-            table = new Table(null, null);
-            table.Deserialize(savedData.value);
-            gview.innerHTML = header_div + table.GetHTMLForm();
+            gview.innerHTML = header_div;
+            console.log(savedData.value);
+            sd = JSON.parse(savedData.value);
+            i = 1;
+            for (i$ = 0, len$ = sd.length; i$ < len$; ++i$) {
+              t = sd[i$];
+              table = new Table(null, null);
+              table.Deserialize(JSON.stringify(t));
+              gview.innerHTML += table.GetHTMLForm(i);
+              i++;
+            }
           }
           return;
         };
         window.SaveConfiguration = function(n){
-          var savedData, table, rows, i, i$, len$, row, e;
+          var savedData, sd, table, rows, i, i$, len$, row, e;
           console.log("SAVE CONFIGURATION TABLE " + n);
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          sd = JSON.parse(savedData.value);
           table = new Table(null, null);
-          table.Deserialize(savedData.value);
+          table.Deserialize(JSON.stringify(sd[n]));
           rows = table.rows;
           table.range = document.getElementById("t" + n + ".databaseRange").value;
           i = 1;
@@ -44,8 +53,8 @@
             i = i + 1;
           }
           table.rows = rows;
-          savedData.value = table.Serialize();
-          return console.log(table.rows);
+          sd[n] = JSON.parse(table.Serialize());
+          return savedData.value = JSON.stringify(sd);
         };
         window.Save = function(){
           var savedData, sheet, loadsheet, sheetdict, table, payload, error, ref$, request;
@@ -97,7 +106,7 @@
             url: window.location.protocol + "//" + window.location.host + "/_hierachical/" + SocialCalc._room + "/20",
             contentType: "application/json",
             success: function(response){
-              var links, clusters, raw, data, i$, len$, cluster, gview, total;
+              var links, clusters, raw, data, i$, len$, cluster, gview, total, sd;
               links = [];
               clusters = [];
               raw = [];
@@ -112,8 +121,9 @@
               gview = sheet.views.database.element;
               gview.innerHTML = header_div;
               total = 0;
+              sd = [];
               return $.when.apply($, links).done(function(){
-                return $.each(arguments, function(i, d){
+                $.each(arguments, function(i, d){
                   var data, table;
                   data = d[0];
                   if (data.length > 0) {
@@ -122,11 +132,12 @@
                     if (table.IsHasData()) {
                       total += 1;
                       console.log(table.Serialize());
-                      savedData.value = table.Serialize();
+                      sd.push(JSON.parse(table.Serialize()));
                       return gview.innerHTML += table.GetHTMLForm(total);
                     }
                   }
                 });
+                return savedData.value = JSON.stringify(sd);
               });
             },
             error: function(response){
