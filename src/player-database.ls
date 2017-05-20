@@ -4,7 +4,7 @@
   return location.reload! unless $
   SocialCalc = window.SocialCalc || alert 'Cannot find window.SocialCalc'
 
-  header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr></table>"
+  header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div><textarea id=\"manual\" name=\"manual\"></textarea></div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Add Manually\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr></table>"
 
   window.DatabaseOnClick = !(s, t) ->
     sheet = SocialCalc.GetSpreadsheetControlObject!
@@ -31,7 +31,7 @@
     sd = JSON.parse(savedData.value)
 
     table = new Table null, null
-    table.Deserialize JSON.stringify(sd[n])
+    table.Deserialize JSON.stringify(sd[parseInt(n)-1])
 
     rows = table.rows
     table.range = document.getElementById("t" + n + ".databaseRange").value
@@ -51,7 +51,9 @@
       i = i + 1
 
     table.rows = rows
-    sd[n] = JSON.parse(table.Serialize!)
+    console.log(sd)
+    sd[parseInt(n)-1] = JSON.parse(table.Serialize!)
+    console.log(sd)
     savedData.value = JSON.stringify(sd)
 
   window.Save = ->
@@ -62,32 +64,41 @@
     loadsheet = new LoadSheet sheet
     sheetdict = loadsheet.LoadSheetDict!
 
-    if !(savedData.value == null) && !(savedData.value == "")
+    console.log(savedData.value)
+    ### Its broken here
+    tables = JSON.parse(savedData.value)
+
+    i = 0
+    for t in tables
+      i += 1
+      console.log("SAVING TABLE " + i)
       table = new Table sheetdict, null
-      table.Deserialize savedData.value
+      table.Deserialize JSON.stringify(t)
 
-    payload =
-      * name: SocialCalc._room
-        table: table.TupleSerializeWithChecker!
-    console.log(payload.table)
+      tablename = SocialCalc._room + "_t" + i
 
-    error = true
-    error = payload.table.error ? false
+      payload =
+        * name: SocialCalc._room
+          table: table.TupleSerializeWithChecker tablename
+      console.log(payload.table)
 
-    request =
-      * type: "POST"
-        url: window.location.protocol + "//" + window.location.host + "/_database/create"
-        contentType: "application/json"
-        data: JSON.stringify payload
-        success: (response) ->
-          console.log("OK OK OK MYSQL OK OK OK")
-        error: (response) ->
-          console.log("Error saving data to database")
+      error = true
+      error = payload.table.error ? false
 
-    if not error
-      $.ajax request
-    else
-      console.log("ERROR VALIDATIONS")
+      request =
+        * type: "POST"
+          url: window.location.protocol + "//" + window.location.host + "/_database/create"
+          contentType: "application/json"
+          data: JSON.stringify payload
+          success: (response) ->
+            console.log("OK OK OK MYSQL OK OK OK")
+          error: (response) ->
+            console.log("Error saving data to database")
+
+      if not error
+        $.ajax request
+      else
+        console.log("ERROR VALIDATIONS")
 
     return
 

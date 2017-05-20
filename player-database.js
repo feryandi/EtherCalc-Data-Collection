@@ -9,7 +9,7 @@
           return location.reload();
         }
         SocialCalc = window.SocialCalc || alert('Cannot find window.SocialCalc');
-        header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr></table>";
+        header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div><textarea id=\"manual\" name=\"manual\">Enter text here...</textarea></div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Add Manually\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr></table>";
         window.DatabaseOnClick = function(s, t){
           var sheet, gview, savedData, sd, i, i$, len$, table;
           sheet = SocialCalc.GetSpreadsheetControlObject();
@@ -38,7 +38,7 @@
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
           sd = JSON.parse(savedData.value);
           table = new Table(null, null);
-          table.Deserialize(JSON.stringify(sd[n]));
+          table.Deserialize(JSON.stringify(sd[parseInt(n) - 1]));
           rows = table.rows;
           table.range = document.getElementById("t" + n + ".databaseRange").value;
           i = 1;
@@ -53,43 +53,54 @@
             i = i + 1;
           }
           table.rows = rows;
-          sd[n] = JSON.parse(table.Serialize());
+          console.log(sd);
+          sd[parseInt(n) - 1] = JSON.parse(table.Serialize());
+          console.log(sd);
           return savedData.value = JSON.stringify(sd);
         };
         window.Save = function(){
-          var savedData, sheet, loadsheet, sheetdict, table, payload, error, ref$, request;
+          var savedData, sheet, loadsheet, sheetdict, tables, i, i$, len$, t, table, tablename, payload, error, ref$, request;
           console.log("SAVING TO DATABASE");
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
           sheet = SocialCalc.GetSpreadsheetControlObject();
           loadsheet = new LoadSheet(sheet);
           sheetdict = loadsheet.LoadSheetDict();
-          if (!(savedData.value === null) && !(savedData.value === "")) {
+          console.log(savedData.value);
+          tables = JSON.parse(savedData.value);
+          i = 0;
+          for (i$ = 0, len$ = tables.length; i$ < len$; ++i$) {
+            t = tables[i$];
+            i += 1;
+            console.log("SAVING TABLE " + i);
             table = new Table(sheetdict, null);
-            table.Deserialize(savedData.value);
-          }
-          payload = {
-            name: SocialCalc._room,
-            table: table.TupleSerializeWithChecker()
-          };
-          console.log(payload.table);
-          error = true;
-          error = (ref$ = payload.table.error) != null ? ref$ : false;
-          request = {
-            type: "POST",
-            url: window.location.protocol + "//" + window.location.host + "/_database/create",
-            contentType: "application/json",
-            data: JSON.stringify(payload),
-            success: function(response){
-              return console.log("OK OK OK MYSQL OK OK OK");
-            },
-            error: function(response){
-              return console.log("Error saving data to database");
+            table.Deserialize(JSON.stringify(t));
+            tablename = SocialCalc._room + "_t" + i;
+            payload = {
+              name: SocialCalc._room,
+              table: table.TupleSerializeWithChecker(tablename)
+            };
+            console.log(payload.table);
+            error = true;
+            error = (ref$ = payload.table.error) != null ? ref$ : false;
+            request = {
+              type: "POST",
+              url: window.location.protocol + "//" + window.location.host + "/_database/create",
+              contentType: "application/json",
+              data: JSON.stringify(payload),
+              success: fn$,
+              error: fn1$
+            };
+            if (!error) {
+              $.ajax(request);
+            } else {
+              console.log("ERROR VALIDATIONS");
             }
-          };
-          if (!error) {
-            $.ajax(request);
-          } else {
-            console.log("ERROR VALIDATIONS");
+          }
+          function fn$(response){
+            return console.log("OK OK OK MYSQL OK OK OK");
+          }
+          function fn1$(response){
+            return console.log("Error saving data to database");
           }
         };
         window.Synchronize = function(){

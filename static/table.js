@@ -32,7 +32,6 @@ Table = (function(){
     this.header = [];
     this.data = [];
     //jdata = JSON.parse(data);
-    console.log(data);
     jdata = data; 
     if (jdata !== null) {
       for (i$ = 0, len$ = jdata.length; i$ < len$; ++i$) {
@@ -50,12 +49,12 @@ Table = (function(){
     }
     return this.MapHeaderData();
   };
-  Table.prototype.TupleSerializeWithChecker = function(){    
+  Table.prototype.TupleSerializeWithChecker = function(tablename){    
     ///////////////////////////////////////////////////////////////////
     // Tuples for databases
     // Sekarang 1 Tabel dulu yah :(
     table = {};
-    table['name'] = 'table_1';
+    table['name'] = tablename;
     table['headers'] = [];
     table['data'] = [];
 
@@ -85,7 +84,7 @@ Table = (function(){
 
         // DATA TYPE CHECKER
         error['error'] = "type";
-        console.log(cellname + " <~ " + row['vtype'] + " <<>> " + cell.mtype);
+        // console.log(cellname + " <~ " + row['vtype'] + " <<>> " + cell.mtype);
 
         if (row['vtype'] == "str" && cell.mtype != "str") {
           return error;
@@ -109,7 +108,7 @@ Table = (function(){
         // DATA RANGE CHECKER
         // Check if the vrange is an JSONArray
         error['error'] = "range";
-        console.log(cellname + " <~ r: " + row['vrange']);
+        // console.log(cellname + " <~ r: " + row['vrange']);
         if (row['vrange'].charAt(0) == "[" && row['vrange'].slice(-1) == "]") {
           console.log("ARRAY");
         // EX: ["text01","text02"] (JSONArray)
@@ -230,7 +229,7 @@ Table = (function(){
   Table.prototype.Deserialize = function(sdata){
     var data;
     data = JSON.parse(sdata);
-    console.log(data);
+    //console.log(data);
     this.title = data['title'];
     this.footnote = data['footnote'];
     this.header = data['header'];
@@ -239,7 +238,7 @@ Table = (function(){
     this.startcol = data['startcol'];
     this.endcol = data['endcol'];
     this.rows = data['rows'];
-    console.log(this.rows);
+    //console.log(this.rows);
   };
   Table.prototype.GetCellCol = function(colname){
     var res = colname.match(/[a-zA-Z]+/g);
@@ -293,7 +292,6 @@ Table = (function(){
       tempobj['header'] = "";
       for (j$ = 0, len$ = (ref$ = this.header).length; j$ < len$; ++j$) {
         h = ref$[j$];
-        console.log(SocialCalc.rcColname(col) + h);
         hcell = this.sheet[this.sheetname]['sheetdict'][SocialCalc.rcColname(col) + h]
         if (hcell) {
           tempobj['header'] += this.sheet[this.sheetname]['sheetdict'][SocialCalc.rcColname(col) + h].cstr + " ";
@@ -314,7 +312,7 @@ Table = (function(){
     hdata = this.rows;
     whole_table = "";
     title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><table style=\"padding-top: 15px;padding-bottom: 15px;\"><tr><td width=\"55%\" style=\"padding-left:20px;\">" + "<strong>Table " + i + "</strong></td>";
-    title_div += "<td width=\"35%\" style=\"text-align: right;\">Data Range <input id=\"t1.databaseRange\" class=\"btn btn-default btn-xs\" style=\"max-width: 105px\" value=\"" + this.range + "\"></td>";
+    title_div += "<td width=\"35%\" style=\"text-align: right;\">Data Range <input id=\"t" + i + ".databaseRange\" class=\"btn btn-default btn-xs\" style=\"max-width: 105px\" value=\"" + this.range + "\"></td>";
     title_div += "<td width=\"10%\" style=\"text-align: right;\"><input type=\"button\" value=\"Save\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\"></td></tr></table>";
     whole_table += title_div;
     begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Column</th><th>Type</th><th>Permitted Values</th><!--<th>Relation</th>--></tr></thead>";
@@ -323,9 +321,9 @@ Table = (function(){
     for (i$ = 0, len$ = hdata.length; i$ < len$; ++i$) {
       hd = hdata[i$];
       table_start = "<tr>";
-      table_label = "<td><input id=\"t1.databaseLabel." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['header'] + "\" /></td>";
-      table_data = "<td><input id=\"t1.databaseData." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" style=\"max-width: 85px\" value=\"" + hd['data'] + "\" /></td>";
-      table_validations = "<td><select id=\"t1.databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option selected>None</option><option>String</option><option>Integer</option></select></td><td><input id=\"t1.databaseRangeV1\" onchange=\"\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"t1.databaseRelationV1\" onchange=\"\" class=\"btn btn-default btn-xs\"/></td>";
+      table_label = "<td><input id=\"t" + i + ".databaseLabel." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['header'] + "\" /></td>";
+      table_data = "<td><input id=\"t" + i + ".databaseData." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" style=\"max-width: 85px\" value=\"" + hd['data'] + "\" /></td>";
+      table_validations = "<td><select id=\"t" + i + ".databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option selected>None</option><option>String</option><option>Integer</option></select></td><td><input id=\"t" + i + ".databaseRangeV1\" onchange=\"\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"t" + i + ".databaseRelationV1\" onchange=\"\" class=\"btn btn-default btn-xs\"/></td>";
       is_int = '';
       is_dbl = '';
       is_str = '';
@@ -351,8 +349,8 @@ Table = (function(){
       case 'bln':
         is_bln = 'selected';
       }
-      table_datatype = "<td><select id=\"t1.databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option " + is_non + " value=\"non\">None</option><option " + is_int + " value=\"int\">Integer</option><option " + is_dbl + " value=\"dbl\">Double</option><option " + is_str + " value=\"str\">String</option><option " + is_txt + " value=\"txt\">Text</option><option " + is_bln + " value=\"bln\">Boolean</option></select></td>";
-      table_permitted = "<td><input id=\"t1.databasePermitted." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['vrange'] + "\" ></td>";
+      table_datatype = "<td><select id=\"t" + i + ".databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option " + is_non + " value=\"non\">None</option><option " + is_int + " value=\"int\">Integer</option><option " + is_dbl + " value=\"dbl\">Double</option><option " + is_str + " value=\"str\">String</option><option " + is_txt + " value=\"txt\">Text</option><option " + is_bln + " value=\"bln\">Boolean</option></select></td>";
+      table_permitted = "<td><input id=\"t" + i + ".databasePermitted." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['vrange'] + "\" ></td>";
       table_validations = table_datatype + table_permitted;
       table_end = "</tr>";
       table_per_data = table_start + table_label + table_data + table_validations + table_end;
