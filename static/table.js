@@ -285,6 +285,12 @@ Table = (function(){
   Table.prototype.MapHeaderData = function(){
     var i$, to$, col, tempobj, j$, ref$, len$, h, results$ = [];
     this.rows = [];
+
+    if (this.range != "") {
+      temp = this.RangeComponent(this.range);
+      this.startcol = temp[0];
+      this.endcol = temp[2];
+    }
     // Yang di for itu kolom karena dengan asumsi bahwa tabelnya headernya horizontal
     for (i$ = this.startcol, to$ = this.endcol; i$ <= to$; ++i$) {
       col = i$;
@@ -303,7 +309,9 @@ Table = (function(){
       tempobj['vrel'] = '';
       results$.push(this.rows.push(tempobj));
     }
-    this.range = this.GetDataRange(this.startcol, this.endcol)
+    if (this.range == "") {
+      this.range = this.GetDataRange(this.startcol, this.endcol);
+    }
     return results$;
   };
   Table.prototype.GetHTMLForm = function(number){

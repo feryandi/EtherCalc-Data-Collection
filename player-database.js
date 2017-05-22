@@ -9,7 +9,7 @@
           return location.reload();
         }
         SocialCalc = window.SocialCalc || alert('Cannot find window.SocialCalc');
-        header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div><textarea id=\"manual\" name=\"manual\">Enter text here...</textarea></div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Add Manually\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr></table>";
+        header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div><textarea id=\"databaseManualInput\" name=\"databaseManualInput\"></textarea></div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Add Manually\" onclick=\"window.AddManual();\" style=\"font-size:x-small;\"></td></tr></table>";
         window.DatabaseOnClick = function(s, t){
           var sheet, gview, savedData, sd, i, i$, len$, table;
           sheet = SocialCalc.GetSpreadsheetControlObject();
@@ -156,6 +156,37 @@
             }
           };
           $.ajax(request);
+        };
+        window.AddManual = function(){
+          var sheet, loadsheet, sheetdict, savedData, manualData, sd, md, table;
+          sheet = SocialCalc.GetSpreadsheetControlObject();
+          loadsheet = new LoadSheet(sheet);
+          sheetdict = loadsheet.LoadSheetDict();
+          savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          manualData = document.getElementById("databaseManualInput");
+          if (savedData.value === null || savedData.value === "") {
+            savedData.value = "[]";
+          }
+          sd = JSON.parse(savedData.value);
+          md = JSON.parse(manualData.value);
+          if (!md.hasOwnProperty('header')) {
+            console.log("Error - header not found");
+            return;
+          }
+          if (!md.hasOwnProperty('data')) {
+            console.log("Error - data not found");
+            return;
+          }
+          if (!md.hasOwnProperty('range')) {
+            console.log("Error - range not found");
+            return;
+          }
+          table = new Table(sheetdict, null);
+          table.Deserialize(JSON.stringify(md));
+          table.MapHeaderData();
+          sd.push(JSON.parse(table.Serialize()));
+          savedData.value = JSON.stringify(sd);
+          window.DatabaseOnClick();
         };
       }
     });
