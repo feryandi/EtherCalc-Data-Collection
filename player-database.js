@@ -58,6 +58,15 @@
           console.log(sd);
           return savedData.value = JSON.stringify(sd);
         };
+        window.DeleteTable = function(n){
+          var savedData, sd;
+          console.log("DELETE TABLE " + n);
+          savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          sd = JSON.parse(savedData.value);
+          sd.splice(n - 1, 1);
+          savedData.value = JSON.stringify(sd);
+          window.DatabaseOnClick();
+        };
         window.Save = function(){
           var savedData, sheet, loadsheet, sheetdict, tables, i, i$, len$, t, table, tablename, payload, error, ref$, request;
           console.log("SAVING TO DATABASE");

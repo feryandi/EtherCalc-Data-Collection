@@ -3,6 +3,7 @@ Table = (function(){
   Table.displayName = 'Table';
   var prototype = Table.prototype, constructor = Table;
   function Table(sheetdict, data){
+    // console.log(data);
     this.sheet = sheetdict;
     this.sheetname = 'Sheet1';
     // Table Specifics
@@ -286,11 +287,13 @@ Table = (function(){
     var i$, to$, col, tempobj, j$, ref$, len$, h, results$ = [];
     this.rows = [];
 
-    if (this.range != "") {
-      temp = this.RangeComponent(this.range);
+    if (this.range && this.range.length <= 10 && !this.startcol && !this.endcol) {
+      temp = this.RangeComponent(String(this.range));
+      console.log(temp);
       this.startcol = temp[0];
       this.endcol = temp[2];
     }
+
     // Yang di for itu kolom karena dengan asumsi bahwa tabelnya headernya horizontal
     for (i$ = this.startcol, to$ = this.endcol; i$ <= to$; ++i$) {
       col = i$;
@@ -298,9 +301,14 @@ Table = (function(){
       tempobj['header'] = "";
       for (j$ = 0, len$ = (ref$ = this.header).length; j$ < len$; ++j$) {
         h = ref$[j$];
-        hcell = this.sheet[this.sheetname]['sheetdict'][SocialCalc.rcColname(col) + h]
+        hcell = this.sheet[this.sheetname]['sheetdict'][SocialCalc.rcColname(col) + h];
+        mergemap = this.sheet[this.sheetname]['mergemap'];
+        mergetarget = mergemap[SocialCalc.rcColname(col) + h];
+        if (mergetarget) {
+          tempobj['header'] += this.sheet[this.sheetname]['sheetdict'][mergetarget].cstr + " ";
+        }
         if (hcell) {
-          tempobj['header'] += this.sheet[this.sheetname]['sheetdict'][SocialCalc.rcColname(col) + h].cstr + " ";
+          tempobj['header'] += hcell.cstr + " ";
         }
       }
       tempobj['data'] = SocialCalc.rcColname(col);
@@ -319,11 +327,11 @@ Table = (function(){
     i = number; // Used when there are multiple tables
     hdata = this.rows;
     whole_table = "";
-    title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><table style=\"padding-top: 15px;padding-bottom: 15px;\"><tr><td width=\"55%\" style=\"padding-left:20px;\">" + "<strong>Table " + i + "</strong></td>";
+    title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><table style=\"padding-top: 15px;padding-bottom: 15px; padding-left:20px; padding-right:20px;\"><tr><td width=\"40%\">" + "<strong>Table " + i + "</strong></td>";
     title_div += "<td width=\"35%\" style=\"text-align: right;\">Data Range <input id=\"t" + i + ".databaseRange\" class=\"btn btn-default btn-xs\" style=\"max-width: 105px\" value=\"" + this.range + "\"></td>";
-    title_div += "<td width=\"10%\" style=\"text-align: right;\"><input type=\"button\" value=\"Save\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\"></td></tr></table>";
+    title_div += "<td width=\"30%\" style=\"text-align: right;\"><input type=\"button\" value=\"Save\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\"><input type=\"button\" onclick=\"window.DeleteTable(" + i + ");\" value=\"Del\" style=\"font-size:x-small;\"></td></tr></table>";
     whole_table += title_div;
-    begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Column</th><th>Type</th><th>Permitted Values</th><!--<th>Relation</th>--></tr></thead>";
+    begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Column</th><th>Type</th><th>Permitted Values</th><th>Relation</th></tr></thead>";
     whole_table += begin_table;
     n = 1;
     for (i$ = 0, len$ = hdata.length; i$ < len$; ++i$) {
@@ -332,6 +340,7 @@ Table = (function(){
       table_label = "<td><input id=\"t" + i + ".databaseLabel." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['header'] + "\" /></td>";
       table_data = "<td><input id=\"t" + i + ".databaseData." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" style=\"max-width: 85px\" value=\"" + hd['data'] + "\" /></td>";
       table_validations = "<td><select id=\"t" + i + ".databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option selected>None</option><option>String</option><option>Integer</option></select></td><td><input id=\"t" + i + ".databaseRangeV1\" onchange=\"\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"t" + i + ".databaseRelationV1\" onchange=\"\" class=\"btn btn-default btn-xs\"/></td>";
+      table_relations = "<td></td>"
       is_int = '';
       is_dbl = '';
       is_str = '';
@@ -361,7 +370,7 @@ Table = (function(){
       table_permitted = "<td><input id=\"t" + i + ".databasePermitted." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['vrange'] + "\" ></td>";
       table_validations = table_datatype + table_permitted;
       table_end = "</tr>";
-      table_per_data = table_start + table_label + table_data + table_validations + table_end;
+      table_per_data = table_start + table_label + table_data + table_validations + table_relations + table_end;
       whole_table += table_per_data;
       n += 1;
     }

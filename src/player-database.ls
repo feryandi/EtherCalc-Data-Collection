@@ -56,6 +56,17 @@
     console.log(sd)
     savedData.value = JSON.stringify(sd)
 
+  window.DeleteTable = (n) ->
+    console.log("DELETE TABLE " + n)
+    savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
+    sd = JSON.parse(savedData.value)
+
+    sd.splice(n-1, 1);
+    savedData.value = JSON.stringify(sd)
+    
+    window.DatabaseOnClick!
+    return
+
   window.Save = ->
     console.log("SAVING TO DATABASE")
     savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")

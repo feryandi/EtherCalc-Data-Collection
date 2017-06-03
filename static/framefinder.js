@@ -586,6 +586,7 @@ MySheet = (function(){
     this.txt = '';
     this.mergestrarr = [];
     this.mergecellset = [];
+    this.mergemap = [];
   }
   MySheet.prototype.GetCellsArray = function(){
     var cellArray = []
@@ -606,6 +607,9 @@ MySheet = (function(){
         colnum = j$;
         obj = rcColname(colnum) + rownum;
         this.mergecellset.push(obj);
+        if (rownum != row1 || colnum != col1) {
+          this.mergemap[obj] = rcColname(col1) + row1;
+        }
       }
     }
   };
