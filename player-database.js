@@ -50,6 +50,8 @@
             row["vtype"] = e.options[e.selectedIndex].value;
             e = document.getElementById("t" + n + ".databasePermitted." + i);
             row["vrange"] = e.value;
+            e = document.getElementById("t" + n + ".databaseRelation." + i);
+            row["vrel"] = e.value;
             i = i + 1;
           }
           table.rows = rows;

@@ -39,7 +39,13 @@
         if (i > 0) {
           colstring += ', ';
         }
-        colstring += '`' + col.name.trim() + '` ' + col.type + '(160)';
+        if (col.type === "VARCHAR") {
+          colstring += '`' + col.name.trim() + '` ' + col.type + '(160)';
+        } else if (col.type === "INT") {
+          colstring += '`' + col.name.trim() + '` ' + col.type + '(11)';
+        } else {
+          colstring += '`' + col.name.trim() + '` ' + col.type;
+        }
         i += 1;
       }
       colstring += ')';

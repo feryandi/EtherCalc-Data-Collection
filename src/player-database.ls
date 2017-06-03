@@ -47,7 +47,8 @@
       e = document.getElementById("t" + n + ".databasePermitted." + i)
       row["vrange"] = e.value
       
-      # row["vrel"] = ""
+      e = document.getElementById("t" + n + ".databaseRelation." + i)
+      row["vrel"] = e.value
       i = i + 1
 
     table.rows = rows

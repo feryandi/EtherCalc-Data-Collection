@@ -39,7 +39,14 @@
         colstring += ', '
       ## DISINI HARUSNYA DITANGANIN JUGA JENIS2 VARCHAR, TEXT BERAPA LENGTHNYA DLL 
       ## YANG INI BARU DEFAULT: VARCHAR
-      colstring += '`' + col.name.trim! + '` ' + col.type + '(160)'
+
+      if col.type == "VARCHAR"
+        colstring += '`' + col.name.trim! + '` ' + col.type + '(160)'
+      else if col.type == "INT" 
+        colstring += '`' + col.name.trim! + '` ' + col.type + '(11)'
+      else
+        colstring += '`' + col.name.trim! + '` ' + col.type
+
       i += 1
     colstring += ')'
 

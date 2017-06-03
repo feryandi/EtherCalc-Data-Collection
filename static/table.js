@@ -75,18 +75,26 @@ Table = (function(){
       rownum = 0;
       for (i$ = datarange[1]; i$ <= datarange[3]; ++i$) {
         if (!(table['data'][rownum] instanceof Array)){
-          table['data'][rownum] = []
+          table['data'][rownum] = [];
         }
-        cellname = '' + row['data'] + i$
-        cell = this.sheet[this.sheetname]['sheetdict'][cellname]
+        cellname = '' + row['data'] + i$;
+        cell = this.sheet[this.sheetname]['sheetdict'][cellname];
 
         error = {};
         error['coordinate'] = cellname;
 
+        // DATA TYPE IN DATABASE
+        if (row['vtype'] == "int") {
+          header['type'] = 'INT';
+        } else if (row['vtype'] == "dbl") {
+          header['type'] = 'DOUBLE'; 
+        } else if (row['vtype'] == "txt") {
+          header['type'] = 'TEXT'; 
+        }
+
         // DATA TYPE CHECKER
         error['error'] = "type";
         // console.log(cellname + " <~ " + row['vtype'] + " <<>> " + cell.mtype);
-
         if (row['vtype'] == "str" && cell.mtype != "str") {
           return error;
         } else if (row['vtype'] == "int") {
@@ -183,13 +191,43 @@ Table = (function(){
             return error;
           }
         } else {
-          console.log("ELSE");
           // KOSONG
         }
 
-        // DATA RELATION CHECKER, kayanya bukan disini sih harusnya soalnya ngecek antar tabel        
+        // DATA MERGE AND DATA CONTENT
+        mergemap = this.sheet[this.sheetname]['mergemap'];
+        mergetarget = mergemap[cellname];
+        if (mergetarget) {
+          table['data'][rownum][colnum] = this.sheet[this.sheetname]['sheetdict'][mergetarget].cstr;
+        } else {
+          table['data'][rownum][colnum] = cell.cstr
+        }
 
-        table['data'][rownum][colnum] = cell.cstr
+        // DATA RELATION CHECKER, kayanya bukan disini sih harusnya soalnya ngecek antar tabel
+        // row['vrel']
+        relValid = false;
+        error['error'] = "relation";
+        if (row['vrel'].split(":").length == 2) {
+          content = table['data'][rownum][colnum];
+          relRange = this.RangeComponent(row['vrel']);
+
+          for (r = relRange[1]; r <= relRange[3]; r++) {
+            for (c = relRange[0]; c <= relRange[2]; c++) {
+              checkCell = this.sheet[this.sheetname]['sheetdict'][SocialCalc.rcColname(c) + r];
+              if (checkCell.cstr == content) {
+                relValid = true;
+              }
+            }
+          }
+        } else {
+          relValid = true;
+        }
+
+        if (!relValid) {          
+          error['description'] = "Relation not detected";
+          return error;
+        }
+
         rownum += 1;
       }
       colnum += 1
@@ -339,8 +377,6 @@ Table = (function(){
       table_start = "<tr>";
       table_label = "<td><input id=\"t" + i + ".databaseLabel." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['header'] + "\" /></td>";
       table_data = "<td><input id=\"t" + i + ".databaseData." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" style=\"max-width: 85px\" value=\"" + hd['data'] + "\" /></td>";
-      table_validations = "<td><select id=\"t" + i + ".databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option selected>None</option><option>String</option><option>Integer</option></select></td><td><input id=\"t" + i + ".databaseRangeV1\" onchange=\"\" class=\"btn btn-default btn-xs\"/></td><td><input id=\"t" + i + ".databaseRelationV1\" onchange=\"\" class=\"btn btn-default btn-xs\"/></td>";
-      table_relations = "<td></td>"
       is_int = '';
       is_dbl = '';
       is_str = '';
@@ -368,9 +404,10 @@ Table = (function(){
       }
       table_datatype = "<td><select id=\"t" + i + ".databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option " + is_non + " value=\"non\">None</option><option " + is_int + " value=\"int\">Integer</option><option " + is_dbl + " value=\"dbl\">Double</option><option " + is_str + " value=\"str\">String</option><option " + is_txt + " value=\"txt\">Text</option><option " + is_bln + " value=\"bln\">Boolean</option></select></td>";
       table_permitted = "<td><input id=\"t" + i + ".databasePermitted." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['vrange'] + "\" ></td>";
-      table_validations = table_datatype + table_permitted;
+      table_relations = "<td><input id=\"t" + i + ".databaseRelation." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['vrel'] + "\" style=\"max-width: 105px\"></td>"
+      table_validations = table_datatype + table_permitted + table_relations;
       table_end = "</tr>";
-      table_per_data = table_start + table_label + table_data + table_validations + table_relations + table_end;
+      table_per_data = table_start + table_label + table_data + table_validations + table_end;
       whole_table += table_per_data;
       n += 1;
     }
