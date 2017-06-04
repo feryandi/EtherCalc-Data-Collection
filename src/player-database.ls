@@ -6,6 +6,26 @@
 
   header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div><textarea id=\"databaseManualInput\" name=\"databaseManualInput\"></textarea></div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Add Manually\" onclick=\"window.AddManual();\" style=\"font-size:x-small;\"></td></tr></table>"
 
+  window.SaveState = ->
+    console.log("Save State");
+    savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
+
+    payload =
+      * id: SocialCalc._room
+        tables: savedData.value
+
+    request =
+      * type: "POST"
+        url: window.location.protocol + "//" + window.location.host + "/_database/state"
+        contentType: "application/json"
+        data: JSON.stringify payload
+        success: (response) ->
+          console.log("STATE SAVED")
+        error: (response) ->
+          console.log("Error saving state to database")
+          console.log(response)
+    $.ajax request
+
   window.DatabaseOnClick = !(s, t) ->
     sheet = SocialCalc.GetSpreadsheetControlObject!
     gview = sheet.views.database.element
@@ -56,6 +76,7 @@
     sd[parseInt(n)-1] = JSON.parse(table.Serialize!)
     console.log(sd)
     savedData.value = JSON.stringify(sd)
+    window.SaveState!
 
   window.DeleteTable = (n) ->
     console.log("DELETE TABLE " + n)
@@ -66,6 +87,7 @@
     savedData.value = JSON.stringify(sd)
     
     window.DatabaseOnClick!
+    window.SaveState!
     return
 
   window.Save = ->
@@ -111,7 +133,7 @@
         $.ajax request
       else
         console.log("ERROR VALIDATIONS")
-
+    window.SaveState!
     return
 
   window.Synchronize = ->
@@ -159,10 +181,11 @@
                   sd.push JSON.parse(table.Serialize!)
                   gview.innerHTML += table.GetHTMLForm total
             savedData.value = JSON.stringify sd
+            window.SaveState!
         
         error: (response) ->
           console.log("Error getting predicted data")
-    $.ajax request    
+    $.ajax request 
     return
 
   window.AddManual = ->
@@ -205,6 +228,7 @@
     savedData.value = JSON.stringify(sd)
 
     window.DatabaseOnClick!
+    window.SaveState!
 
     return
   

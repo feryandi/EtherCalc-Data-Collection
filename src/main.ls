@@ -236,6 +236,41 @@
     @response.type \application/json
     @response.json 200 data
 
+  @post '/_database/state': ->
+    code_id = @body.id
+    table_json = @body.tables
+
+    name = "s_database_state"
+    MYSQL.isExistTable name, (err, results) ->
+      columns = []
+
+      columnA = []
+      columnA["name"] = "code_id"
+      columnA["type"] = "VARCHAR"
+      columns.push(columnA)
+      
+      columnB = []
+      columnB["name"] = "table_json"
+      columnB["type"] = "TEXT"
+      columns.push(columnB)
+
+      if results <= 0
+        # Create the Table first
+        MYSQL.createTable name, columns
+
+      data = [code_id, table_json]
+
+      MYSQL.isExistData name, columnA["name"], code_id, (err, results) ->
+        if results > 0
+          MYSQL.updateData name, columns, data, columnA["name"], code_id
+        else
+          MYSQL.insertData name, columns, data
+
+    data =
+      * status: "OK"
+    @response.type \application/json
+    @response.json 200 data
+
   @get '/_/:room/test': ->
     room = @params.room
     {snapshot} <~ SC._get room, IO

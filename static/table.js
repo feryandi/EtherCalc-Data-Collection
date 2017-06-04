@@ -227,7 +227,6 @@ Table = (function(){
           error['description'] = "Relation not detected";
           return error;
         }
-
         rownum += 1;
       }
       colnum += 1

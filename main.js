@@ -347,6 +347,42 @@
         return this.response.json(200, data);
       }
     });
+    this.post({
+      '/_database/state': function(){
+        var code_id, table_json, name, data;
+        code_id = this.body.id;
+        table_json = this.body.tables;
+        name = "s_database_state";
+        MYSQL.isExistTable(name, function(err, results){
+          var columns, columnA, columnB, data;
+          columns = [];
+          columnA = [];
+          columnA["name"] = "code_id";
+          columnA["type"] = "VARCHAR";
+          columns.push(columnA);
+          columnB = [];
+          columnB["name"] = "table_json";
+          columnB["type"] = "TEXT";
+          columns.push(columnB);
+          if (results <= 0) {
+            MYSQL.createTable(name, columns);
+          }
+          data = [code_id, table_json];
+          return MYSQL.isExistData(name, columnA["name"], code_id, function(err, results){
+            if (results > 0) {
+              return MYSQL.updateData(name, columns, data, columnA["name"], code_id);
+            } else {
+              return MYSQL.insertData(name, columns, data);
+            }
+          });
+        });
+        data = {
+          status: "OK"
+        };
+        this.response.type('application/json');
+        return this.response.json(200, data);
+      }
+    });
     this.get({
       '/_/:room/test': function(){
         var room, this$ = this;

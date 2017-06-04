@@ -58,6 +58,11 @@
     client.query "SHOW TABLES LIKE '" + table_name + "'", (error, results, fields) ->
       cb error, results.length
 
+  db.isExistData = (table_name, col, val, cb) ->
+    console.log(table_name + " | " + col + " | " + val + " | ")
+    client.query "SELECT * FROM " + table_name + " WHERE " + col + " = '" + val + "'", (error, results, fields) ->
+      cb error, results.length
+
   db.dropTable = (table_name) ->
     client.query "DROP TABLE " + table_name, (error, results, fields) -> return
 
@@ -77,12 +82,42 @@
       console.log(d)
       if i > 0
         datastring += ', '
-      datastring += '"' + d + '"'
+      datastring += '"' + db.escapeString(d) + '"'
       i += 1
     datastring += ')'
 
     client.query "INSERT INTO " + table_name + " " + colstring + " VALUES " + datastring, (error, results, fields) -> 
       console.log(error)
+
+  db.updateData = (table_name, columns, data, con_col, con_val) ->
+    colstring = ''
+    i = 0
+    for col in columns
+      if i > 0
+        colstring += ", "
+      colstring += "`" + col.name.trim! + "`='" + data[i] + "'"
+      i += 1
+
+    client.query "UPDATE " + table_name + " SET " + colstring + " WHERE " + con_col + " = '" + con_val + "'", (error, results, fields) -> 
+      console.log(error)
+
+  db.escapeString = (str) ->
+    return str.replace /[\0\x08\x09\x1a\n\r"'\\\%]/g, (char) ->
+        switch (char) 
+        case "\0"
+          return "\\0"
+        case "\x08"
+          return "\\b"
+        case "\x09"
+          return "\\t"
+        case "\x1a"
+          return "\\z"
+        case "\n"
+          return "\\n"
+        case "\r"
+          return "\\r"
+        case "\"", "'", "\\", "%"
+          return "\\"+char
 
   db.log = -> 
     console.log "MySQL OK" 

@@ -10,6 +10,29 @@
         }
         SocialCalc = window.SocialCalc || alert('Cannot find window.SocialCalc');
         header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div><textarea id=\"databaseManualInput\" name=\"databaseManualInput\"></textarea></div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Add Manually\" onclick=\"window.AddManual();\" style=\"font-size:x-small;\"></td></tr></table>";
+        window.SaveState = function(){
+          var savedData, payload, request;
+          console.log("Save State");
+          savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          payload = {
+            id: SocialCalc._room,
+            tables: savedData.value
+          };
+          request = {
+            type: "POST",
+            url: window.location.protocol + "//" + window.location.host + "/_database/state",
+            contentType: "application/json",
+            data: JSON.stringify(payload),
+            success: function(response){
+              return console.log("STATE SAVED");
+            },
+            error: function(response){
+              console.log("Error saving state to database");
+              return console.log(response);
+            }
+          };
+          return $.ajax(request);
+        };
         window.DatabaseOnClick = function(s, t){
           var sheet, gview, savedData, sd, i, i$, len$, table;
           sheet = SocialCalc.GetSpreadsheetControlObject();
@@ -58,7 +81,8 @@
           console.log(sd);
           sd[parseInt(n) - 1] = JSON.parse(table.Serialize());
           console.log(sd);
-          return savedData.value = JSON.stringify(sd);
+          savedData.value = JSON.stringify(sd);
+          return window.SaveState();
         };
         window.DeleteTable = function(n){
           var savedData, sd;
@@ -68,6 +92,7 @@
           sd.splice(n - 1, 1);
           savedData.value = JSON.stringify(sd);
           window.DatabaseOnClick();
+          window.SaveState();
         };
         window.Save = function(){
           var savedData, sheet, loadsheet, sheetdict, tables, i, i$, len$, t, table, tablename, payload, error, ref$, request;
@@ -107,6 +132,7 @@
               console.log("ERROR VALIDATIONS");
             }
           }
+          window.SaveState();
           function fn$(response){
             return console.log("OK OK OK MYSQL OK OK OK");
           }
@@ -159,7 +185,8 @@
                     }
                   }
                 });
-                return savedData.value = JSON.stringify(sd);
+                savedData.value = JSON.stringify(sd);
+                return window.SaveState();
               });
             },
             error: function(response){
@@ -198,6 +225,7 @@
           sd.push(JSON.parse(table.Serialize()));
           savedData.value = JSON.stringify(sd);
           window.DatabaseOnClick();
+          window.SaveState();
         };
       }
     });

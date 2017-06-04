@@ -59,6 +59,12 @@
         return cb(error, results.length);
       });
     };
+    db.isExistData = function(table_name, col, val, cb){
+      console.log(table_name + " | " + col + " | " + val + " | ");
+      return client.query("SELECT * FROM " + table_name + " WHERE " + col + " = '" + val + "'", function(error, results, fields){
+        return cb(error, results.length);
+      });
+    };
     db.dropTable = function(table_name){
       return client.query("DROP TABLE " + table_name, function(error, results, fields){});
     };
@@ -83,12 +89,51 @@
         if (i > 0) {
           datastring += ', ';
         }
-        datastring += '"' + d + '"';
+        datastring += '"' + db.escapeString(d) + '"';
         i += 1;
       }
       datastring += ')';
       return client.query("INSERT INTO " + table_name + " " + colstring + " VALUES " + datastring, function(error, results, fields){
         return console.log(error);
+      });
+    };
+    db.updateData = function(table_name, columns, data, con_col, con_val){
+      var colstring, i, i$, len$, col;
+      colstring = '';
+      i = 0;
+      for (i$ = 0, len$ = columns.length; i$ < len$; ++i$) {
+        col = columns[i$];
+        if (i > 0) {
+          colstring += ", ";
+        }
+        colstring += "`" + col.name.trim() + "`='" + data[i] + "'";
+        i += 1;
+      }
+      return client.query("UPDATE " + table_name + " SET " + colstring + " WHERE " + con_col + " = '" + con_val + "'", function(error, results, fields){
+        return console.log(error);
+      });
+    };
+    db.escapeString = function(str){
+      return str.replace(/[\0\x08\x09\x1a\n\r"'\\\%]/g, function(char){
+        switch (char) {
+        case "\0":
+          return "\\0";
+        case "\x08":
+          return "\\b";
+        case "\x09":
+          return "\\t";
+        case "\x1a":
+          return "\\z";
+        case "\n":
+          return "\\n";
+        case "\r":
+          return "\\r";
+        case "\"":
+        case "'":
+        case "\\":
+        case "%":
+          return "\\" + char;
+        }
       });
     };
     db.log = function(){
