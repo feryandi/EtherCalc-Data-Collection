@@ -6,6 +6,19 @@
 
   header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div><textarea id=\"databaseManualInput\" name=\"databaseManualInput\"></textarea></div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Add Manually\" onclick=\"window.AddManual();\" style=\"font-size:x-small;\"></td></tr></table>"
 
+  window.RefreshView = ->
+    sheet = SocialCalc.GetSpreadsheetControlObject!
+    gview = sheet.views.database.element
+    gview.innerHTML = header_div
+    savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
+    sd = JSON.parse(savedData.value)
+    i = 1
+    for t in sd
+      table = new Table null, null
+      table.Deserialize JSON.stringify(t)
+      gview.innerHTML += table.GetHTMLForm i
+      i++  
+
   window.SaveState = ->
     console.log("Save State");
     savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
@@ -23,7 +36,22 @@
           console.log("STATE SAVED")
         error: (response) ->
           console.log("Error saving state to database")
+    $.ajax request
+
+  window.LoadState = ->
+    console.log("Load State");
+    savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
+
+    request =
+      * type: "GET"
+        url: window.location.protocol + "//" + window.location.host + "/_database/state/" + SocialCalc._room
+        success: (response) ->
           console.log(response)
+          if response.length == 1
+            savedData.value = response[0]["table_json"]
+            window.RefreshView!
+        error: (response) ->
+          console.log("Error loading state to database")
     $.ajax request
 
   window.DatabaseOnClick = !(s, t) ->
@@ -33,16 +61,9 @@
 
     if savedData.value == null || savedData.value == ""
       gview.innerHTML = header_div
+      window.LoadState!
     else
-      gview.innerHTML = header_div
-      console.log(savedData.value)
-      sd = JSON.parse(savedData.value)
-      i = 1
-      for t in sd
-        table = new Table null, null
-        table.Deserialize JSON.stringify(t)
-        gview.innerHTML += table.GetHTMLForm i
-        i++
+      window.RefreshView!
     return
 
   window.SaveConfiguration = (n) ->

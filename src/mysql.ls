@@ -58,10 +58,10 @@
     client.query "SHOW TABLES LIKE '" + table_name + "'", (error, results, fields) ->
       cb error, results.length
 
-  db.isExistData = (table_name, col, val, cb) ->
+  db.selectData = (table_name, col, val, cb) ->
     console.log(table_name + " | " + col + " | " + val + " | ")
     client.query "SELECT * FROM " + table_name + " WHERE " + col + " = '" + val + "'", (error, results, fields) ->
-      cb error, results.length
+      cb error, results
 
   db.dropTable = (table_name) ->
     client.query "DROP TABLE " + table_name, (error, results, fields) -> return

@@ -10,6 +10,23 @@
         }
         SocialCalc = window.SocialCalc || alert('Cannot find window.SocialCalc');
         header_div = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"font-weight:bold;margin:8px;\"><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div>Current Label and Data</div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Scan Spreadsheet\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"></td></tr><tr><td style=\"vertical-align:middle;padding-right:16px;\"><div><textarea id=\"databaseManualInput\" name=\"databaseManualInput\"></textarea></div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Add Manually\" onclick=\"window.AddManual();\" style=\"font-size:x-small;\"></td></tr></table>";
+        window.RefreshView = function(){
+          var sheet, gview, savedData, sd, i, i$, len$, t, table, results$ = [];
+          sheet = SocialCalc.GetSpreadsheetControlObject();
+          gview = sheet.views.database.element;
+          gview.innerHTML = header_div;
+          savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          sd = JSON.parse(savedData.value);
+          i = 1;
+          for (i$ = 0, len$ = sd.length; i$ < len$; ++i$) {
+            t = sd[i$];
+            table = new Table(null, null);
+            table.Deserialize(JSON.stringify(t));
+            gview.innerHTML += table.GetHTMLForm(i);
+            results$.push(i++);
+          }
+          return results$;
+        };
         window.SaveState = function(){
           var savedData, payload, request;
           console.log("Save State");
@@ -27,31 +44,42 @@
               return console.log("STATE SAVED");
             },
             error: function(response){
-              console.log("Error saving state to database");
+              return console.log("Error saving state to database");
+            }
+          };
+          return $.ajax(request);
+        };
+        window.LoadState = function(){
+          var savedData, request;
+          console.log("Load State");
+          savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          request = {
+            type: "GET",
+            url: window.location.protocol + "//" + window.location.host + "/_database/state/" + SocialCalc._room,
+            success: function(response){
+              console.log(response);
+              if (response.length === 1) {
+                savedData.value = response[0]["table_json"];
+                return window.RefreshView();
+              }
+            },
+            error: function(response){
+              console.log("Error loading state to database");
               return console.log(response);
             }
           };
           return $.ajax(request);
         };
         window.DatabaseOnClick = function(s, t){
-          var sheet, gview, savedData, sd, i, i$, len$, table;
+          var sheet, gview, savedData;
           sheet = SocialCalc.GetSpreadsheetControlObject();
           gview = sheet.views.database.element;
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
           if (savedData.value === null || savedData.value === "") {
             gview.innerHTML = header_div;
+            window.LoadState();
           } else {
-            gview.innerHTML = header_div;
-            console.log(savedData.value);
-            sd = JSON.parse(savedData.value);
-            i = 1;
-            for (i$ = 0, len$ = sd.length; i$ < len$; ++i$) {
-              t = sd[i$];
-              table = new Table(null, null);
-              table.Deserialize(JSON.stringify(t));
-              gview.innerHTML += table.GetHTMLForm(i);
-              i++;
-            }
+            window.RefreshView();
           }
           return;
         };

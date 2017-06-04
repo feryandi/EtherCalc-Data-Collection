@@ -347,6 +347,22 @@
         return this.response.json(200, data);
       }
     });
+    this.get({
+      '/_database/state/:room': function(){
+        var this$, code_id, name;
+        this$ = this;
+        code_id = this.params.room;
+        name = "s_database_state";
+        return MYSQL.isExistTable(name, function(err, results){
+          return MYSQL.selectData(name, "code_id", code_id, function(err, results){
+            console.log("SELECT RESULTS:: ");
+            console.log(results);
+            this$.response.type('application/json');
+            return this$.response.json(200, results);
+          });
+        });
+      }
+    });
     this.post({
       '/_database/state': function(){
         var code_id, table_json, name, data;
@@ -368,8 +384,8 @@
             MYSQL.createTable(name, columns);
           }
           data = [code_id, table_json];
-          return MYSQL.isExistData(name, columnA["name"], code_id, function(err, results){
-            if (results > 0) {
+          return MYSQL.selectData(name, columnA["name"], code_id, function(err, results){
+            if (results.length > 0) {
               return MYSQL.updateData(name, columns, data, columnA["name"], code_id);
             } else {
               return MYSQL.insertData(name, columns, data);

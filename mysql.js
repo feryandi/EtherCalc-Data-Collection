@@ -59,10 +59,10 @@
         return cb(error, results.length);
       });
     };
-    db.isExistData = function(table_name, col, val, cb){
+    db.selectData = function(table_name, col, val, cb){
       console.log(table_name + " | " + col + " | " + val + " | ");
       return client.query("SELECT * FROM " + table_name + " WHERE " + col + " = '" + val + "'", function(error, results, fields){
-        return cb(error, results.length);
+        return cb(error, results);
       });
     };
     db.dropTable = function(table_name){

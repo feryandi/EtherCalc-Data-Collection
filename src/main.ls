@@ -236,6 +236,17 @@
     @response.type \application/json
     @response.json 200 data
 
+  @get '/_database/state/:room': ->
+    this$ = this
+    code_id = @params.room
+    name = "s_database_state"
+    MYSQL.isExistTable name, (err, results) ->
+      MYSQL.selectData name, "code_id", code_id, (err, results) ->
+        console.log("SELECT RESULTS:: ")
+        console.log(results)
+        this$.response.type \application/json
+        this$.response.json 200 results
+
   @post '/_database/state': ->
     code_id = @body.id
     table_json = @body.tables
@@ -260,8 +271,8 @@
 
       data = [code_id, table_json]
 
-      MYSQL.isExistData name, columnA["name"], code_id, (err, results) ->
-        if results > 0
+      MYSQL.selectData name, columnA["name"], code_id, (err, results) ->
+        if results.length > 0
           MYSQL.updateData name, columns, data, columnA["name"], code_id
         else
           MYSQL.insertData name, columns, data
