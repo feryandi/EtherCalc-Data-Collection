@@ -44,7 +44,8 @@
               return console.log("STATE SAVED");
             },
             error: function(response){
-              return console.log("Error saving state to database");
+              console.log("Error saving state to database");
+              return console.log(response);
             }
           };
           return $.ajax(request);
@@ -64,8 +65,7 @@
               }
             },
             error: function(response){
-              console.log("Error loading state to database");
-              return console.log(response);
+              return console.log("Error loading state to database");
             }
           };
           return $.ajax(request);
@@ -165,7 +165,8 @@
             return console.log("OK OK OK MYSQL OK OK OK");
           }
           function fn1$(response){
-            return console.log("Error saving data to database");
+            console.log("Error saving data to database");
+            return console.log(response);
           }
         };
         window.Synchronize = function(){

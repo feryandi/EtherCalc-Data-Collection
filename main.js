@@ -322,23 +322,41 @@
       }
     });
     ExportExcelXML = api(function(){});
+    this.get({
+      '/_database/connect': function(){
+        var mysqlSetting, data;
+        mysqlSetting = {
+          host: "172.17.0.3",
+          user: "root",
+          password: "root",
+          database: "TA"
+        };
+        MYSQL.test(mysqlSetting);
+        data = {
+          test: "OK"
+        };
+        this.response.type('application/json');
+        return this.response.json(200, data);
+      }
+    });
     this.post({
       '/_database/create': function(){
-        var tablec, table, data;
+        var mysqlSetting, tablec, table, data;
+        mysqlSetting = {
+          host: "172.17.0.3",
+          user: "root",
+          password: "root",
+          database: "TA"
+        };
         tablec = new Table(null, null);
         table = tablec.TupleDeserialize(this.body.table);
-        MYSQL.isExistTable(table.name, function(err, results){
-          var i$, ref$, len$, data, results$ = [];
+        MYSQL.isExistTable(table.name, mysqlSetting, function(err, results){
           if (results > 0) {
             console.log("Exist. Dropping Table.");
-            MYSQL.dropTable(table.name);
+            MYSQL.dropTable(table.name, mysqlSetting);
           }
-          MYSQL.createTable(table.name, table.headers);
-          for (i$ = 0, len$ = (ref$ = table.data).length; i$ < len$; ++i$) {
-            data = ref$[i$];
-            results$.push(MYSQL.insertData(table.name, table.headers, data));
-          }
-          return results$;
+          MYSQL.createTable(table.name, table.headers, mysqlSetting);
+          return MYSQL.insertData(table.name, table.headers, table.data, mysqlSetting);
         });
         data = {
           status: "OK"
@@ -349,12 +367,18 @@
     });
     this.get({
       '/_database/state/:room': function(){
-        var this$, code_id, name;
+        var mysqlSetting, this$, code_id, name;
+        mysqlSetting = {
+          host: "172.17.0.3",
+          user: "root",
+          password: "root",
+          database: "TA"
+        };
         this$ = this;
         code_id = this.params.room;
         name = "s_database_state";
-        return MYSQL.isExistTable(name, function(err, results){
-          return MYSQL.selectData(name, "code_id", code_id, function(err, results){
+        return MYSQL.isExistTable(name, mysqlSetting, function(err, results){
+          return MYSQL.selectData(name, "code_id", code_id, mysqlSetting, function(err, results){
             console.log("SELECT RESULTS:: ");
             console.log(results);
             this$.response.type('application/json');
@@ -365,12 +389,19 @@
     });
     this.post({
       '/_database/state': function(){
-        var code_id, table_json, name, data;
+        var mysqlSetting, code_id, table_json, name, data;
+        mysqlSetting = {
+          host: "172.17.0.3",
+          user: "root",
+          password: "root",
+          database: "TA"
+        };
         code_id = this.body.id;
         table_json = this.body.tables;
         name = "s_database_state";
-        MYSQL.isExistTable(name, function(err, results){
+        MYSQL.isExistTable(name, mysqlSetting, function(err, results){
           var columns, columnA, columnB, data;
+          console.log(results);
           columns = [];
           columnA = [];
           columnA["name"] = "code_id";
@@ -380,15 +411,17 @@
           columnB["name"] = "table_json";
           columnB["type"] = "TEXT";
           columns.push(columnB);
-          if (results <= 0) {
-            MYSQL.createTable(name, columns);
+          if (results.length <= 0) {
+            MYSQL.createTable(name, columns, mysqlSetting);
           }
           data = [code_id, table_json];
-          return MYSQL.selectData(name, columnA["name"], code_id, function(err, results){
+          return MYSQL.selectData(name, columnA["name"], code_id, mysqlSetting, function(err, results){
+            var ndata;
             if (results.length > 0) {
-              return MYSQL.updateData(name, columns, data, columnA["name"], code_id);
+              return MYSQL.updateData(name, columns, data, columnA["name"], code_id, mysqlSetting);
             } else {
-              return MYSQL.insertData(name, columns, data);
+              ndata = [data];
+              return MYSQL.insertData(name, columns, ndata, mysqlSetting);
             }
           });
         });

@@ -36,6 +36,7 @@
           console.log("STATE SAVED")
         error: (response) ->
           console.log("Error saving state to database")
+          console.log(response)
     $.ajax request
 
   window.LoadState = ->
@@ -149,6 +150,7 @@
             console.log("OK OK OK MYSQL OK OK OK")
           error: (response) ->
             console.log("Error saving data to database")
+            console.log(response)
 
       if not error
         $.ajax request

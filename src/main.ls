@@ -213,23 +213,44 @@
 
   ExportExcelXML = api ->
 
+  @get '/_database/connect': ->
+    #stat = MYSQL.createConnection("172.17.0.3", 3306, "root", "root", "TA")
+
+    mysqlSetting =
+      * host: "172.17.0.3",
+        user: "root",
+        password: "root",
+        database: "TA"
+
+    MYSQL.test mysqlSetting
+
+    data =
+      * test: "OK"
+    @response.type \application/json
+    @response.json 200 data
+
   @post '/_database/create': ->
-    #MYSQL.createTable @body.name
+    ## For debuging, hardcode    
+    mysqlSetting =
+      * host: "172.17.0.3",
+        user: "root",
+        password: "root",
+        database: "TA"
 
     tablec = new Table null, null
     table = tablec.TupleDeserialize @body.table
 
     # If there exists such table, delete HAHAHA
-    MYSQL.isExistTable table.name, (err, results) ->
+    MYSQL.isExistTable table.name, mysqlSetting, (err, results) ->
       if results > 0
         console.log("Exist. Dropping Table.")
-        MYSQL.dropTable table.name
+        MYSQL.dropTable table.name, mysqlSetting
 
       # Create the Table first
-      MYSQL.createTable table.name, table.headers
+      MYSQL.createTable table.name, table.headers, mysqlSetting
 
-      for data in table.data
-        MYSQL.insertData table.name, table.headers, data
+      ###for data in table.data
+      MYSQL.insertData table.name, table.headers, table.data, mysqlSetting
 
     data =
       * status: "OK"
@@ -237,22 +258,37 @@
     @response.json 200 data
 
   @get '/_database/state/:room': ->
+    ## For debuging, hardcode    
+    mysqlSetting =
+      * host: "172.17.0.3",
+        user: "root",
+        password: "root",
+        database: "TA"
+
     this$ = this
     code_id = @params.room
     name = "s_database_state"
-    MYSQL.isExistTable name, (err, results) ->
-      MYSQL.selectData name, "code_id", code_id, (err, results) ->
+    MYSQL.isExistTable name, mysqlSetting, (err, results) ->
+      MYSQL.selectData name, "code_id", code_id, mysqlSetting, (err, results) ->
         console.log("SELECT RESULTS:: ")
         console.log(results)
         this$.response.type \application/json
         this$.response.json 200 results
 
   @post '/_database/state': ->
+    ## For debuging, hardcode    
+    mysqlSetting =
+      * host: "172.17.0.3",
+        user: "root",
+        password: "root",
+        database: "TA"
+
     code_id = @body.id
     table_json = @body.tables
 
     name = "s_database_state"
-    MYSQL.isExistTable name, (err, results) ->
+    MYSQL.isExistTable name, mysqlSetting, (err, results) ->
+      console.log(results)
       columns = []
 
       columnA = []
@@ -265,17 +301,18 @@
       columnB["type"] = "TEXT"
       columns.push(columnB)
 
-      if results <= 0
+      if results.length <= 0
         # Create the Table first
-        MYSQL.createTable name, columns
+        MYSQL.createTable name, columns, mysqlSetting
 
       data = [code_id, table_json]
 
-      MYSQL.selectData name, columnA["name"], code_id, (err, results) ->
+      MYSQL.selectData name, columnA["name"], code_id, mysqlSetting, (err, results) ->
         if results.length > 0
-          MYSQL.updateData name, columns, data, columnA["name"], code_id
+          MYSQL.updateData name, columns, data, columnA["name"], code_id, mysqlSetting
         else
-          MYSQL.insertData name, columns, data
+          ndata = [data]
+          MYSQL.insertData name, columns, ndata, mysqlSetting
 
     data =
       * status: "OK"

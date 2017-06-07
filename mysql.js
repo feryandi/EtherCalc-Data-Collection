@@ -2,36 +2,57 @@
 (function(){
   this.__MYSQL__ = null;
   this.include = function(){
-    var db, env, ref$, mysqlPort, mysqlHost, mysqlPass, mysqlDb, dataDir, mysqlUser, mysqlDB, mysqlSetting, mysql, client;
+    var db, env, ref$, mysqlPort, mysqlHost, mysqlPass, mysqlDb, dataDir, mysql, client;
     if (this.__MYSQL__) {
       return this.__MYSQL__;
     }
     db = {};
     env = process.env;
     ref$ = [env['MYSQL_PORT'], env['MYSQL_HOST'], env['MYSQL_PASS'], env['MYSQL_DB'], env['OPENSHIFT_DATA_DIR']], mysqlPort = ref$[0], mysqlHost = ref$[1], mysqlPass = ref$[2], mysqlDb = ref$[3], dataDir = ref$[4];
-    mysqlHost == null && (mysqlHost = 'localhost');
-    mysqlPort == null && (mysqlPort = 3306);
-    mysqlUser == null && (mysqlUser = 'root');
-    mysqlPass == null && (mysqlPass = 'root');
-    mysqlDB == null && (mysqlDB = 'TA');
-    mysqlSetting = {
-      host: mysqlHost,
-      user: mysqlUser,
-      password: mysqlPass,
-      database: mysqlDB
-    };
     mysql = require('mysql');
-    client = mysql.createConnection(mysqlSetting);
-    client.connect(function(err){
-      if (err) {
-        console.log("MySQL error connecting: " + err + ".stack");
-        return;
-      }
-      console.log("MySQL connected as id " + client + ".threadId");
-    });
+    client = client;
     dataDir == null && (dataDir = process.cwd());
-    db.createTable = function(table_name, columns){
-      var colstring, i, i$, len$, col;
+    db.createConnection = function(host, port, user, pass, db){
+      var mysqlHost, mysqlPort, mysqlUser, mysqlPass, mysqlDB, mysqlSetting, client;
+      mysqlHost == null && (mysqlHost = host);
+      mysqlPort == null && (mysqlPort = port);
+      mysqlUser == null && (mysqlUser = user);
+      mysqlPass == null && (mysqlPass = pass);
+      mysqlDB == null && (mysqlDB = db);
+      mysqlSetting = {
+        host: mysqlHost,
+        user: mysqlUser,
+        password: mysqlPass,
+        database: mysqlDB
+      };
+      client = mysql.createConnection(mysqlSetting);
+      return client.connect(function(err){
+        if (err) {
+          console.log("MySQL error connecting: " + err + ".stack");
+          return false;
+        }
+        console.log("MySQL connected as id " + client + ".threadId");
+        return true;
+      });
+    };
+    db.executeSQL = function(sql, mysqlSetting, cb){
+      var client;
+      client = mysql.createConnection(mysqlSetting);
+      return client.connect(function(err){
+        if (err) {
+          console.log("MySQL error connecting: " + err + ".stack");
+          return false;
+        }
+        console.log("MySQL connected as id " + client + ".threadId");
+        console.log("SQL: " + sql);
+        client.query(sql, function(error, results, fields){
+          return cb(error, results);
+        });
+        return true;
+      });
+    };
+    db.createTable = function(table_name, columns, mysqlSetting){
+      var colstring, i, i$, len$, col, sql;
       colstring = '(';
       i = 0;
       for (i$ = 0, len$ = columns.length; i$ < len$; ++i$) {
@@ -49,27 +70,30 @@
         i += 1;
       }
       colstring += ')';
-      return client.query("CREATE TABLE " + table_name + " " + colstring, function(error, results, fields){
-        return console.log("ERROR CREATE: " + error);
-      });
+      sql = "CREATE TABLE " + table_name + " " + colstring;
+      return db.executeSQL(sql, mysqlSetting, function(error, results){});
     };
-    db.isExistTable = function(table_name, cb){
-      console.log(table_name);
-      return client.query("SHOW TABLES LIKE '" + table_name + "'", function(error, results, fields){
-        return cb(error, results.length);
-      });
-    };
-    db.selectData = function(table_name, col, val, cb){
-      console.log(table_name + " | " + col + " | " + val + " | ");
-      return client.query("SELECT * FROM " + table_name + " WHERE " + col + " = '" + val + "'", function(error, results, fields){
+    db.isExistTable = function(table_name, mysqlSetting, cb){
+      var sql;
+      sql = "SHOW TABLES LIKE '" + table_name + "'";
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
         return cb(error, results);
       });
     };
-    db.dropTable = function(table_name){
-      return client.query("DROP TABLE " + table_name, function(error, results, fields){});
+    db.selectData = function(table_name, col, val, mysqlSetting, cb){
+      var sql;
+      sql = "SELECT * FROM " + table_name + " WHERE " + col + " = '" + val + "'";
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
     };
-    db.insertData = function(table_name, columns, data){
-      var colstring, i, i$, len$, col, datastring, d;
+    db.dropTable = function(table_name, mysqlSetting){
+      var sql;
+      sql = "DROP TABLE " + table_name;
+      return db.executeSQL(sql, mysqlSetting, function(error, results){});
+    };
+    db.insertData = function(table_name, columns, data, mysqlSetting){
+      var colstring, i, i$, len$, col, datastring, jd, d, j$, len1$, dt, sql;
       colstring = '(';
       i = 0;
       for (i$ = 0, len$ = columns.length; i$ < len$; ++i$) {
@@ -82,23 +106,30 @@
       }
       colstring += ')';
       datastring = '(';
-      i = 0;
+      jd = 1;
       for (i$ = 0, len$ = data.length; i$ < len$; ++i$) {
         d = data[i$];
-        console.log(d);
-        if (i > 0) {
-          datastring += ', ';
+        i = 0;
+        for (j$ = 0, len1$ = d.length; j$ < len1$; ++j$) {
+          dt = d[j$];
+          console.log(dt);
+          if (i > 0) {
+            datastring += ', ';
+          }
+          datastring += '"' + db.escapeString(dt) + '"';
+          i += 1;
         }
-        datastring += '"' + db.escapeString(d) + '"';
-        i += 1;
+        datastring += ')';
+        if (jd < data.length) {
+          datastring += ', (';
+        }
+        jd += 1;
       }
-      datastring += ')';
-      return client.query("INSERT INTO " + table_name + " " + colstring + " VALUES " + datastring, function(error, results, fields){
-        return console.log(error);
-      });
+      sql = "INSERT INTO " + table_name + " " + colstring + " VALUES " + datastring;
+      return db.executeSQL(sql, mysqlSetting, function(error, results){});
     };
-    db.updateData = function(table_name, columns, data, con_col, con_val){
-      var colstring, i, i$, len$, col;
+    db.updateData = function(table_name, columns, data, con_col, con_val, mysqlSetting){
+      var colstring, i, i$, len$, col, sql;
       colstring = '';
       i = 0;
       for (i$ = 0, len$ = columns.length; i$ < len$; ++i$) {
@@ -109,12 +140,11 @@
         colstring += "`" + col.name.trim() + "`='" + data[i] + "'";
         i += 1;
       }
-      return client.query("UPDATE " + table_name + " SET " + colstring + " WHERE " + con_col + " = '" + con_val + "'", function(error, results, fields){
-        return console.log(error);
-      });
+      sql = "UPDATE " + table_name + " SET " + colstring + " WHERE " + con_col + " = '" + con_val + "'";
+      return db.executeSQL(sql, mysqlSetting, function(error, results){});
     };
     db.escapeString = function(str){
-      return str.replace(/[\0\x08\x09\x1a\n\r"'\\\%]/g, function(char){
+      return ("" + str).replace(/[\0\x08\x09\x1a\n\r"'\\\%]/g, function(char){
         switch (char) {
         case "\0":
           return "\\0";
@@ -140,8 +170,10 @@
       console.log("MySQL OK");
       return "Some shitty strings";
     };
-    db.test = function(){
-      return client.query("CREATE TABLE pet (name VARCHAR(20), sex CHAR(1), birth DATE, death DATE)", function(error, results, fields){});
+    db.test = function(mysqlSetting){
+      var sql;
+      sql = "CREATE TABLE pet (name VARCHAR(20), sex CHAR(1), birth DATE, death DATE)";
+      return db.executeSQL(sql, mysqlSetting);
     };
     return this.__MYSQL__ = db;
   };

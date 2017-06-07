@@ -7,31 +7,45 @@
   env = process.env
   [mysqlPort, mysqlHost, mysqlPass, mysqlDb, dataDir] = env<[ MYSQL_PORT MYSQL_HOST MYSQL_PASS MYSQL_DB OPENSHIFT_DATA_DIR ]>
 
-  mysqlHost ?= \localhost
-  mysqlPort ?= 3306
-  mysqlUser ?= \root
-  mysqlPass ?= \root
-  mysqlDB ?= \TA
-
-  mysqlSetting =
-    * host: mysqlHost,
-      user: mysqlUser,
-      password: mysqlPass,
-      database: mysqlDB 
-
   require! \mysql
-  client = mysql.createConnection mysqlSetting
-  client.connect (err) -> 
-    if err 
-      console.log "MySQL error connecting: #err.stack" 
-      return
-    
-    console.log "MySQL connected as id #client.threadId"
-    return
+  client = client
 
   dataDir ?= process.cwd!
 
-  db.createTable = (table_name, columns) ->
+  db.createConnection = (host, port, user, pass, db) ->
+    mysqlHost ?= host
+    mysqlPort ?= port
+    mysqlUser ?= user
+    mysqlPass ?= pass
+    mysqlDB ?= db
+
+    mysqlSetting =
+      * host: mysqlHost,
+        user: mysqlUser,
+        password: mysqlPass,
+        database: mysqlDB
+
+    client = mysql.createConnection mysqlSetting
+    client.connect (err) -> 
+      if err 
+        console.log "MySQL error connecting: #err.stack" 
+        return false
+      console.log "MySQL connected as id #client.threadId"
+      return true
+
+  db.executeSQL = (sql, mysqlSetting, cb) ->
+    client = mysql.createConnection mysqlSetting
+    client.connect (err) -> 
+      if err 
+        console.log "MySQL error connecting: #err.stack" 
+        return false
+      console.log "MySQL connected as id #client.threadId"
+      console.log "SQL: " + sql
+      client.query sql, (error, results, fields) -> 
+        cb error, results
+      return true
+
+  db.createTable = (table_name, columns, mysqlSetting) ->
     colstring = '('
     i = 0
     for col in columns
@@ -50,23 +64,24 @@
       i += 1
     colstring += ')'
 
-    client.query "CREATE TABLE " + table_name + " " + colstring, (error, results, fields) -> 
-      console.log ("ERROR CREATE: " + error)
+    sql = "CREATE TABLE " + table_name + " " + colstring
+    db.executeSQL sql, mysqlSetting, (error, results) -> return
 
-  db.isExistTable = (table_name, cb) ->
-    console.log(table_name)
-    client.query "SHOW TABLES LIKE '" + table_name + "'", (error, results, fields) ->
-      cb error, results.length
-
-  db.selectData = (table_name, col, val, cb) ->
-    console.log(table_name + " | " + col + " | " + val + " | ")
-    client.query "SELECT * FROM " + table_name + " WHERE " + col + " = '" + val + "'", (error, results, fields) ->
+  db.isExistTable = (table_name, mysqlSetting, cb) ->
+    sql = "SHOW TABLES LIKE '" + table_name + "'"
+    db.executeSQL sql, mysqlSetting, (error, results) ->
       cb error, results
 
-  db.dropTable = (table_name) ->
-    client.query "DROP TABLE " + table_name, (error, results, fields) -> return
+  db.selectData = (table_name, col, val, mysqlSetting, cb) ->
+    sql = "SELECT * FROM " + table_name + " WHERE " + col + " = '" + val + "'"
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results
 
-  db.insertData = (table_name, columns, data) ->
+  db.dropTable = (table_name, mysqlSetting) ->
+    sql = "DROP TABLE " + table_name
+    db.executeSQL sql, mysqlSetting, (error, results) -> return
+
+  db.insertData = (table_name, columns, data, mysqlSetting) ->
     colstring = '('
     i = 0
     for col in columns
@@ -77,19 +92,24 @@
     colstring += ')'
 
     datastring = '('
-    i = 0
+    jd = 1
     for d in data
-      console.log(d)
-      if i > 0
-        datastring += ', '
-      datastring += '"' + db.escapeString(d) + '"'
-      i += 1
-    datastring += ')'
+      i = 0
+      for dt in d
+        console.log(dt)
+        if i > 0
+          datastring += ', '
+        datastring += '"' + db.escapeString(dt) + '"'
+        i += 1
+      datastring += ')'
+      if jd < data.length
+        datastring += ', ('
+      jd += 1
 
-    client.query "INSERT INTO " + table_name + " " + colstring + " VALUES " + datastring, (error, results, fields) -> 
-      console.log(error)
+    sql = "INSERT INTO " + table_name + " " + colstring + " VALUES " + datastring
+    db.executeSQL sql, mysqlSetting, (error, results) -> return
 
-  db.updateData = (table_name, columns, data, con_col, con_val) ->
+  db.updateData = (table_name, columns, data, con_col, con_val, mysqlSetting) ->
     colstring = ''
     i = 0
     for col in columns
@@ -98,11 +118,11 @@
       colstring += "`" + col.name.trim! + "`='" + data[i] + "'"
       i += 1
 
-    client.query "UPDATE " + table_name + " SET " + colstring + " WHERE " + con_col + " = '" + con_val + "'", (error, results, fields) -> 
-      console.log(error)
+    sql = "UPDATE " + table_name + " SET " + colstring + " WHERE " + con_col + " = '" + con_val + "'"
+    db.executeSQL sql, mysqlSetting, (error, results) -> return
 
   db.escapeString = (str) ->
-    return str.replace /[\0\x08\x09\x1a\n\r"'\\\%]/g, (char) ->
+    return ("" + str).replace /[\0\x08\x09\x1a\n\r"'\\\%]/g, (char) ->
         switch (char) 
         case "\0"
           return "\\0"
@@ -123,8 +143,9 @@
     console.log "MySQL OK" 
     return "Some shitty strings"
 
-  db.test = ->
-    client.query "CREATE TABLE pet (name VARCHAR(20), sex CHAR(1), birth DATE, death DATE)", (error, results, fields) -> return
+  db.test = (mysqlSetting) ->
+    sql = "CREATE TABLE pet (name VARCHAR(20), sex CHAR(1), birth DATE, death DATE)"
+    db.executeSQL sql, mysqlSetting
 
   @__MYSQL__ = db
 
