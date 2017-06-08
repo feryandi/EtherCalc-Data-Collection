@@ -125,7 +125,7 @@
           window.SaveState();
         };
         window.Save = function(){
-          var savedData, sheet, loadsheet, sheetdict, tables, i, i$, len$, t, table, tablename, spreadsheet_id, payload, error, ref$, request;
+          var savedData, sheet, loadsheet, sheetdict, tables, i, i$, len$, t, table, spreadsheet_id, payload, error, ref$, request;
           console.log("SAVING TO DATABASE");
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
           sheet = SocialCalc.GetSpreadsheetControlObject();
@@ -140,7 +140,6 @@
             console.log("SAVING TABLE " + i);
             table = new Table(sheetdict, null);
             table.Deserialize(JSON.stringify(t));
-            tablename = SocialCalc._room + "_t";
             spreadsheet_id = SocialCalc._room;
             payload = {
               name: SocialCalc._room,
