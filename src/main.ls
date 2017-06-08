@@ -213,26 +213,30 @@
 
   ExportExcelXML = api ->
 
-  @get '/_database/connect': ->
-    #stat = MYSQL.createConnection("172.17.0.3", 3306, "root", "root", "TA")
-
+  @post '/_database/connect': ->
+    this$ = this
     mysqlSetting =
-      * host: "172.17.0.3",
-        user: "root",
-        password: "root",
-        database: "TA"
+      * host: @body.host,
+        port: @body.port,
+        user: @body.user,
+        password: @body.password,
+        database: @body.db
 
-    MYSQL.test mysqlSetting
+    console.log(mysqlSetting)
 
-    data =
-      * test: "OK"
-    @response.type \application/json
-    @response.json 200 data
+    MYSQL.deleteData "test_t1", "2006", "1793", mysqlSetting, (err, ret) ->
+    #MYSQL.createConnection mysqlSetting, (ret) ->
+      data =
+        * error: err
+        * status: ret
+      this$.response.type \application/json
+      this$.response.json 200 data    
 
   @post '/_database/create': ->
-    ## For debuging, hardcode    
+    this$ = this
+    ## For debuging, hardcode
     mysqlSetting =
-      * host: "172.17.0.3",
+      * host: "172.17.0.2",
         user: "root",
         password: "root",
         database: "TA"
@@ -240,27 +244,76 @@
     tablec = new Table null, null
     table = tablec.TupleDeserialize @body.table
 
+    this$.message = "OK"
+    this$.is_need_col_check = true
+
     # If there exists such table, delete HAHAHA
     MYSQL.isExistTable table.name, mysqlSetting, (err, results) ->
-      if results > 0
-        console.log("Exist. Dropping Table.")
-        MYSQL.dropTable table.name, mysqlSetting
+      if results.length > 0
+        console.log("Exist. Emptying Table.")
+        ### Bukan DROP-ing table lagi sekarang,
+        #MYSQL.dropTable table.name, mysqlSetting, (err, res) ->
+        #  console.log(res)
+        ## Kalo kolom ga sama denied intinya mah, tipe validasi????
 
-      # Create the Table first
-      MYSQL.createTable table.name, table.headers, mysqlSetting
-
-      ###for data in table.data
-      MYSQL.insertData table.name, table.headers, table.data, mysqlSetting
-
-    data =
-      * status: "OK"
-    @response.type \application/json
-    @response.json 200 data
+        ### HARUS CEK APAKAH ADA DATA DARI SPREADSHEET LAIN????? !!!!!!
+        MYSQL.selectData table.name, "_spreadsheet_id", table.spreadsheet_id, mysqlSetting, (err, res) ->
+          if res.length > 0
+            this$.is_need_col_check = false
+          MYSQL.getColumns table.name, mysqlSetting, (err, res) ->
+            # CEK Kecocokan Kolom
+            checked = true
+            i = 0
+            if this$.is_need_col_check
+              console.log("xoxo Checking Column Eq oxox")
+              for header in table.headers
+                ## Check by nama
+                if (header.name.trim! != res[i]["Field"].trim!)
+                  checked = false
+                ## Check by type
+                if header.type == "VARCHAR"
+                  if (res[i]["Type"].toLowerCase() != (header.type + "(160)").toLowerCase())
+                    checked = false
+                else if header.type == "INT"
+                  if (res[i]["Type"].toLowerCase() != (header.type + "(11)").toLowerCase())
+                    checked = false
+                else
+                  if (res[i]["Type"].toLowerCase() != (header.type).toLowerCase())
+                    checked = false
+                i += 1
+            if checked
+              ## Delete isi semua tabel WHERE id_spreadsheet, isi ulang
+              MYSQL.deleteData table.name, "_spreadsheet_id", table.spreadsheet_id, mysqlSetting, (err, res) ->
+                MYSQL.insertData table.name, table.headers, table.data, mysqlSetting, (err, res) ->
+                  console.log(res)
+                  data =
+                    * code: 0
+                    * status: this$.message
+                  this$.response.type \application/json
+                  this$.response.json 200 data
+            else
+              this$.message = "Error validating column equality, table contains data from other spreadsheet"
+              data =
+                * code: 1
+                * status: this$.message
+                * table: table.name
+              this$.response.type \application/json
+              this$.response.json 200 data
+      else
+        # Create the Table first, if no table before
+        MYSQL.createTable table.name, table.headers, mysqlSetting, (err, res) ->
+          MYSQL.insertData table.name, table.headers, table.data, mysqlSetting, (err, res) ->
+            console.log(res)
+            data =
+              * code: 0
+              * status: this$.message
+            this$.response.type \application/json
+            this$.response.json 200 data 
 
   @get '/_database/state/:room': ->
     ## For debuging, hardcode    
     mysqlSetting =
-      * host: "172.17.0.3",
+      * host: "172.17.0.2",
         user: "root",
         password: "root",
         database: "TA"
@@ -270,15 +323,13 @@
     name = "s_database_state"
     MYSQL.isExistTable name, mysqlSetting, (err, results) ->
       MYSQL.selectData name, "code_id", code_id, mysqlSetting, (err, results) ->
-        console.log("SELECT RESULTS:: ")
-        console.log(results)
         this$.response.type \application/json
         this$.response.json 200 results
 
   @post '/_database/state': ->
     ## For debuging, hardcode    
     mysqlSetting =
-      * host: "172.17.0.3",
+      * host: "172.17.0.2",
         user: "root",
         password: "root",
         database: "TA"
@@ -303,16 +354,19 @@
 
       if results.length <= 0
         # Create the Table first
-        MYSQL.createTable name, columns, mysqlSetting
+        MYSQL.createTable name, columns, mysqlSetting, (err, res) ->
+          console.log(res)
 
       data = [code_id, table_json]
 
       MYSQL.selectData name, columnA["name"], code_id, mysqlSetting, (err, results) ->
         if results.length > 0
-          MYSQL.updateData name, columns, data, columnA["name"], code_id, mysqlSetting
+          MYSQL.updateData name, columns, data, columnA["name"], code_id, mysqlSetting, (err, res) ->
+            console.log(res)
         else
           ndata = [data]
-          MYSQL.insertData name, columns, ndata, mysqlSetting
+          MYSQL.insertData name, columns, ndata, mysqlSetting, (err, res) ->
+            console.log(res)
 
     data =
       * status: "OK"

@@ -53,6 +53,7 @@
             window.RefreshView!
         error: (response) ->
           console.log("Error loading state to database")
+          console.log(response)
     $.ajax request
 
   window.DatabaseOnClick = !(s, t) ->
@@ -77,6 +78,7 @@
 
     rows = table.rows
     table.range = document.getElementById("t" + n + ".databaseRange").value
+    table.name = document.getElementById("t" + n + ".databaseName").value
 
     i = 1
     for row in rows
@@ -131,11 +133,11 @@
       table = new Table sheetdict, null
       table.Deserialize JSON.stringify(t)
 
-      tablename = SocialCalc._room + "_t" + i
+      spreadsheet_id = SocialCalc._room
 
       payload =
         * name: SocialCalc._room
-          table: table.TupleSerializeWithChecker tablename
+          table: table.TupleSerializeWithChecker spreadsheet_id
       console.log(payload.table)
 
       error = true
@@ -148,6 +150,7 @@
           data: JSON.stringify payload
           success: (response) ->
             console.log("OK OK OK MYSQL OK OK OK")
+            console.log(response)
           error: (response) ->
             console.log("Error saving data to database")
             console.log(response)
@@ -198,9 +201,9 @@
               if data.length > 0
                 table = new Table sheetdict, data
                 table.SetColumnRange(parseInt(clusters[i][0]), parseInt(clusters[i][1]))
+                table.name = "" + SocialCalc._room + "_t" + (i - 1) + ""
                 if table.IsHasData!
                   total += 1
-                  console.log(table.Serialize!)
                   sd.push JSON.parse(table.Serialize!)
                   gview.innerHTML += table.GetHTMLForm total
             savedData.value = JSON.stringify sd
@@ -245,6 +248,7 @@
     table = new Table sheetdict, null
     table.Deserialize JSON.stringify(md)
     table.MapHeaderData!
+    table.name = "" + SocialCalc._room + "_t" + (sd.length + 1) + ""
 
     ### ADD TO SAVEDDATA
     sd.push(JSON.parse(table.Serialize!))

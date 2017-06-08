@@ -12,27 +12,16 @@
     mysql = require('mysql');
     client = client;
     dataDir == null && (dataDir = process.cwd());
-    db.createConnection = function(host, port, user, pass, db){
-      var mysqlHost, mysqlPort, mysqlUser, mysqlPass, mysqlDB, mysqlSetting, client;
-      mysqlHost == null && (mysqlHost = host);
-      mysqlPort == null && (mysqlPort = port);
-      mysqlUser == null && (mysqlUser = user);
-      mysqlPass == null && (mysqlPass = pass);
-      mysqlDB == null && (mysqlDB = db);
-      mysqlSetting = {
-        host: mysqlHost,
-        user: mysqlUser,
-        password: mysqlPass,
-        database: mysqlDB
-      };
+    db.createConnection = function(mysqlSetting, cb){
+      var client;
       client = mysql.createConnection(mysqlSetting);
       return client.connect(function(err){
         if (err) {
           console.log("MySQL error connecting: " + err + ".stack");
-          return false;
+          cb("Error");
         }
         console.log("MySQL connected as id " + client + ".threadId");
-        return true;
+        return cb("Success");
       });
     };
     db.executeSQL = function(sql, mysqlSetting, cb){
@@ -51,7 +40,7 @@
         return true;
       });
     };
-    db.createTable = function(table_name, columns, mysqlSetting){
+    db.createTable = function(table_name, columns, mysqlSetting, cb){
       var colstring, i, i$, len$, col, sql;
       colstring = '(';
       i = 0;
@@ -71,11 +60,20 @@
       }
       colstring += ')';
       sql = "CREATE TABLE " + table_name + " " + colstring;
-      return db.executeSQL(sql, mysqlSetting, function(error, results){});
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
     };
     db.isExistTable = function(table_name, mysqlSetting, cb){
       var sql;
       sql = "SHOW TABLES LIKE '" + table_name + "'";
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
+    };
+    db.getColumns = function(table_name, mysqlSetting, cb){
+      var sql;
+      sql = "SHOW COLUMNS FROM " + table_name;
       return db.executeSQL(sql, mysqlSetting, function(error, results){
         return cb(error, results);
       });
@@ -87,12 +85,21 @@
         return cb(error, results);
       });
     };
-    db.dropTable = function(table_name, mysqlSetting){
+    db.deleteData = function(table_name, con_col, con_val, mysqlSetting, cb){
+      var sql;
+      sql = "DELETE FROM " + table_name + " WHERE `" + con_col + "` = '" + con_val + "'";
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
+    };
+    db.dropTable = function(table_name, mysqlSetting, cb){
       var sql;
       sql = "DROP TABLE " + table_name;
-      return db.executeSQL(sql, mysqlSetting, function(error, results){});
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
     };
-    db.insertData = function(table_name, columns, data, mysqlSetting){
+    db.insertData = function(table_name, columns, data, mysqlSetting, cb){
       var colstring, i, i$, len$, col, datastring, jd, d, j$, len1$, dt, sql;
       colstring = '(';
       i = 0;
@@ -112,7 +119,6 @@
         i = 0;
         for (j$ = 0, len1$ = d.length; j$ < len1$; ++j$) {
           dt = d[j$];
-          console.log(dt);
           if (i > 0) {
             datastring += ', ';
           }
@@ -126,9 +132,11 @@
         jd += 1;
       }
       sql = "INSERT INTO " + table_name + " " + colstring + " VALUES " + datastring;
-      return db.executeSQL(sql, mysqlSetting, function(error, results){});
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
     };
-    db.updateData = function(table_name, columns, data, con_col, con_val, mysqlSetting){
+    db.updateData = function(table_name, columns, data, con_col, con_val, mysqlSetting, cb){
       var colstring, i, i$, len$, col, sql;
       colstring = '';
       i = 0;
@@ -141,7 +149,9 @@
         i += 1;
       }
       sql = "UPDATE " + table_name + " SET " + colstring + " WHERE " + con_col + " = '" + con_val + "'";
-      return db.executeSQL(sql, mysqlSetting, function(error, results){});
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
     };
     db.escapeString = function(str){
       return ("" + str).replace(/[\0\x08\x09\x1a\n\r"'\\\%]/g, function(char){

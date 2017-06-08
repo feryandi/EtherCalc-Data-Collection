@@ -18,6 +18,7 @@ Table = (function(){
     this.startcol = 1;
     this.endcol = 1;
     this.rawdata = data;
+    this.name = "untitled";
     // This only works if only table is vertically aligned
     // if (sheetdict !== undefined && sheetdict !== null) {
     //   this.endcol = this.sheet[this.sheetname]['maxcolnum'];
@@ -50,26 +51,42 @@ Table = (function(){
     }
     return this.MapHeaderData();
   };
-  Table.prototype.TupleSerializeWithChecker = function(tablename){    
+  Table.prototype.TupleSerializeWithChecker = function(spid){    
     ///////////////////////////////////////////////////////////////////
     // Tuples for databases
     // Sekarang 1 Tabel dulu yah :(
     table = {};
-    table['name'] = tablename;
+    // table['name'] = tablename;
+    table['name'] = this.name;
     table['headers'] = [];
     table['data'] = [];
+    table['spreadsheet_id'] = spid;
 
     // Yang simpel dulu ya :((((
     datarow = {};
 
     datarange = this.RangeComponent(this.range)
 
+    var header = {};
+    header['name'] = "_spreadsheet_id";
+    header['type'] = 'VARCHAR';
+    table['headers'].push(header);
+
+    rownum = 0;
+    for (i$ = datarange[1]; i$ <= datarange[3]; ++i$) {
+      if (!(table['data'][rownum] instanceof Array)){
+        table['data'][rownum] = [];
+      }
+      table['data'][rownum][0] = spid;
+      rownum += 1;
+    }
+
     // Getting all the data CELLS that used
-    colnum = 0;
+    colnum = 1;
     for (row of this.rows) {
       var header = {};
       header['name'] = row['header'];
-      header['type'] = 'VARCHAR'; // TO-DO CHANGE THIS
+      header['type'] = 'VARCHAR';
       table['headers'].push(header);
 
       rownum = 0;
@@ -261,6 +278,7 @@ Table = (function(){
     data['endcol'] = this.endcol;
     data['rows'] = this.rows;
     data['range'] = this.range;
+    data['name'] = this.name;
 
     return JSON.stringify(data);
   };
@@ -276,6 +294,7 @@ Table = (function(){
     this.startcol = data['startcol'];
     this.endcol = data['endcol'];
     this.rows = data['rows'];
+    this.name = data['name'];
     //console.log(this.rows);
   };
   Table.prototype.GetCellCol = function(colname){
@@ -364,7 +383,7 @@ Table = (function(){
     i = number; // Used when there are multiple tables
     hdata = this.rows;
     whole_table = "";
-    title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><table style=\"padding-top: 15px;padding-bottom: 15px; padding-left:20px; padding-right:20px;\"><tr><td width=\"40%\">" + "<strong>Table " + i + "</strong></td>";
+    title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><table style=\"padding-top: 15px;padding-bottom: 15px; padding-left:20px; padding-right:20px;\"><tr><td width=\"40%\">" + "<strong>Table " + i + "</strong><br>Name <input id=\"t" + i + ".databaseName\" class=\"btn btn-default btn-xs\" type=\"text\" value=\"" + this.name + "\"></td>";
     title_div += "<td width=\"35%\" style=\"text-align: right;\">Data Range <input id=\"t" + i + ".databaseRange\" class=\"btn btn-default btn-xs\" style=\"max-width: 105px\" value=\"" + this.range + "\"></td>";
     title_div += "<td width=\"30%\" style=\"text-align: right;\"><input type=\"button\" value=\"Save\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\"><input type=\"button\" onclick=\"window.DeleteTable(" + i + ");\" value=\"Del\" style=\"font-size:x-small;\"></td></tr></table>";
     whole_table += title_div;

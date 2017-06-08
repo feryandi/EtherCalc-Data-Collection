@@ -322,54 +322,137 @@
       }
     });
     ExportExcelXML = api(function(){});
-    this.get({
+    this.post({
       '/_database/connect': function(){
-        var mysqlSetting, data;
+        var this$, mysqlSetting;
+        this$ = this;
         mysqlSetting = {
-          host: "172.17.0.3",
-          user: "root",
-          password: "root",
-          database: "TA"
+          host: this.body.host,
+          port: this.body.port,
+          user: this.body.user,
+          password: this.body.password,
+          database: this.body.db
         };
-        MYSQL.test(mysqlSetting);
-        data = {
-          test: "OK"
-        };
-        this.response.type('application/json');
-        return this.response.json(200, data);
+        console.log(mysqlSetting);
+        return MYSQL.deleteData("test_t1", "2006", "1793", mysqlSetting, function(err, ret){
+          var data;
+          data = [
+            {
+              error: err
+            }, {
+              status: ret
+            }
+          ];
+          this$.response.type('application/json');
+          return this$.response.json(200, data);
+        });
       }
     });
     this.post({
       '/_database/create': function(){
-        var mysqlSetting, tablec, table, data;
+        var this$, mysqlSetting, tablec, table;
+        this$ = this;
         mysqlSetting = {
-          host: "172.17.0.3",
+          host: "172.17.0.2",
           user: "root",
           password: "root",
           database: "TA"
         };
         tablec = new Table(null, null);
         table = tablec.TupleDeserialize(this.body.table);
-        MYSQL.isExistTable(table.name, mysqlSetting, function(err, results){
-          if (results > 0) {
-            console.log("Exist. Dropping Table.");
-            MYSQL.dropTable(table.name, mysqlSetting);
+        this$.message = "OK";
+        this$.is_need_col_check = true;
+        return MYSQL.isExistTable(table.name, mysqlSetting, function(err, results){
+          if (results.length > 0) {
+            console.log("Exist. Emptying Table.");
+            return MYSQL.selectData(table.name, "_spreadsheet_id", table.spreadsheet_id, mysqlSetting, function(err, res){
+              if (res.length > 0) {
+                this$.is_need_col_check = false;
+              }
+              return MYSQL.getColumns(table.name, mysqlSetting, function(err, res){
+                var checked, i, i$, ref$, len$, header, data;
+                checked = true;
+                i = 0;
+                if (this$.is_need_col_check) {
+                  console.log("xoxo Checking Column Eq oxox");
+                  for (i$ = 0, len$ = (ref$ = table.headers).length; i$ < len$; ++i$) {
+                    header = ref$[i$];
+                    if (header.name.trim() !== res[i]["Field"].trim()) {
+                      checked = false;
+                    }
+                    if (header.type === "VARCHAR") {
+                      if (res[i]["Type"].toLowerCase() !== (header.type + "(160)").toLowerCase()) {
+                        checked = false;
+                      }
+                    } else if (header.type === "INT") {
+                      if (res[i]["Type"].toLowerCase() !== (header.type + "(11)").toLowerCase()) {
+                        checked = false;
+                      }
+                    } else {
+                      if (res[i]["Type"].toLowerCase() !== header.type.toLowerCase()) {
+                        checked = false;
+                      }
+                    }
+                    i += 1;
+                  }
+                }
+                if (checked) {
+                  return MYSQL.deleteData(table.name, "_spreadsheet_id", table.spreadsheet_id, mysqlSetting, function(err, res){
+                    return MYSQL.insertData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
+                      var data;
+                      console.log(res);
+                      data = [
+                        {
+                          code: 0
+                        }, {
+                          status: this$.message
+                        }
+                      ];
+                      this$.response.type('application/json');
+                      return this$.response.json(200, data);
+                    });
+                  });
+                } else {
+                  this$.message = "Error validating column equality, table contains data from other spreadsheet";
+                  data = [
+                    {
+                      code: 1
+                    }, {
+                      status: this$.message
+                    }, {
+                      table: table.name
+                    }
+                  ];
+                  this$.response.type('application/json');
+                  return this$.response.json(200, data);
+                }
+              });
+            });
+          } else {
+            return MYSQL.createTable(table.name, table.headers, mysqlSetting, function(err, res){
+              return MYSQL.insertData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
+                var data;
+                console.log(res);
+                data = [
+                  {
+                    code: 0
+                  }, {
+                    status: this$.message
+                  }
+                ];
+                this$.response.type('application/json');
+                return this$.response.json(200, data);
+              });
+            });
           }
-          MYSQL.createTable(table.name, table.headers, mysqlSetting);
-          return MYSQL.insertData(table.name, table.headers, table.data, mysqlSetting);
         });
-        data = {
-          status: "OK"
-        };
-        this.response.type('application/json');
-        return this.response.json(200, data);
       }
     });
     this.get({
       '/_database/state/:room': function(){
         var mysqlSetting, this$, code_id, name;
         mysqlSetting = {
-          host: "172.17.0.3",
+          host: "172.17.0.2",
           user: "root",
           password: "root",
           database: "TA"
@@ -379,8 +462,6 @@
         name = "s_database_state";
         return MYSQL.isExistTable(name, mysqlSetting, function(err, results){
           return MYSQL.selectData(name, "code_id", code_id, mysqlSetting, function(err, results){
-            console.log("SELECT RESULTS:: ");
-            console.log(results);
             this$.response.type('application/json');
             return this$.response.json(200, results);
           });
@@ -391,7 +472,7 @@
       '/_database/state': function(){
         var mysqlSetting, code_id, table_json, name, data;
         mysqlSetting = {
-          host: "172.17.0.3",
+          host: "172.17.0.2",
           user: "root",
           password: "root",
           database: "TA"
@@ -412,16 +493,22 @@
           columnB["type"] = "TEXT";
           columns.push(columnB);
           if (results.length <= 0) {
-            MYSQL.createTable(name, columns, mysqlSetting);
+            MYSQL.createTable(name, columns, mysqlSetting, function(err, res){
+              return console.log(res);
+            });
           }
           data = [code_id, table_json];
           return MYSQL.selectData(name, columnA["name"], code_id, mysqlSetting, function(err, results){
             var ndata;
             if (results.length > 0) {
-              return MYSQL.updateData(name, columns, data, columnA["name"], code_id, mysqlSetting);
+              return MYSQL.updateData(name, columns, data, columnA["name"], code_id, mysqlSetting, function(err, res){
+                return console.log(res);
+              });
             } else {
               ndata = [data];
-              return MYSQL.insertData(name, columns, ndata, mysqlSetting);
+              return MYSQL.insertData(name, columns, ndata, mysqlSetting, function(err, res){
+                return console.log(res);
+              });
             }
           });
         });

@@ -65,7 +65,8 @@
               }
             },
             error: function(response){
-              return console.log("Error loading state to database");
+              console.log("Error loading state to database");
+              return console.log(response);
             }
           };
           return $.ajax(request);
@@ -92,6 +93,7 @@
           table.Deserialize(JSON.stringify(sd[parseInt(n) - 1]));
           rows = table.rows;
           table.range = document.getElementById("t" + n + ".databaseRange").value;
+          table.name = document.getElementById("t" + n + ".databaseName").value;
           i = 1;
           for (i$ = 0, len$ = rows.length; i$ < len$; ++i$) {
             row = rows[i$];
@@ -123,7 +125,7 @@
           window.SaveState();
         };
         window.Save = function(){
-          var savedData, sheet, loadsheet, sheetdict, tables, i, i$, len$, t, table, tablename, payload, error, ref$, request;
+          var savedData, sheet, loadsheet, sheetdict, tables, i, i$, len$, t, table, tablename, spreadsheet_id, payload, error, ref$, request;
           console.log("SAVING TO DATABASE");
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
           sheet = SocialCalc.GetSpreadsheetControlObject();
@@ -138,10 +140,11 @@
             console.log("SAVING TABLE " + i);
             table = new Table(sheetdict, null);
             table.Deserialize(JSON.stringify(t));
-            tablename = SocialCalc._room + "_t" + i;
+            tablename = SocialCalc._room + "_t";
+            spreadsheet_id = SocialCalc._room;
             payload = {
               name: SocialCalc._room,
-              table: table.TupleSerializeWithChecker(tablename)
+              table: table.TupleSerializeWithChecker(spreadsheet_id)
             };
             console.log(payload.table);
             error = true;
@@ -162,7 +165,8 @@
           }
           window.SaveState();
           function fn$(response){
-            return console.log("OK OK OK MYSQL OK OK OK");
+            console.log("OK OK OK MYSQL OK OK OK");
+            return console.log(response);
           }
           function fn1$(response){
             console.log("Error saving data to database");
@@ -206,9 +210,9 @@
                   if (data.length > 0) {
                     table = new Table(sheetdict, data);
                     table.SetColumnRange(parseInt(clusters[i][0]), parseInt(clusters[i][1]));
+                    table.name = "" + SocialCalc._room + "_t" + (i - 1) + "";
                     if (table.IsHasData()) {
                       total += 1;
-                      console.log(table.Serialize());
                       sd.push(JSON.parse(table.Serialize()));
                       return gview.innerHTML += table.GetHTMLForm(total);
                     }
@@ -251,6 +255,7 @@
           table = new Table(sheetdict, null);
           table.Deserialize(JSON.stringify(md));
           table.MapHeaderData();
+          table.name = "" + SocialCalc._room + "_t" + (sd.length + 1) + "";
           sd.push(JSON.parse(table.Serialize()));
           savedData.value = JSON.stringify(sd);
           window.DatabaseOnClick();

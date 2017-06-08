@@ -12,26 +12,14 @@
 
   dataDir ?= process.cwd!
 
-  db.createConnection = (host, port, user, pass, db) ->
-    mysqlHost ?= host
-    mysqlPort ?= port
-    mysqlUser ?= user
-    mysqlPass ?= pass
-    mysqlDB ?= db
-
-    mysqlSetting =
-      * host: mysqlHost,
-        user: mysqlUser,
-        password: mysqlPass,
-        database: mysqlDB
-
+  db.createConnection = (mysqlSetting, cb) ->
     client = mysql.createConnection mysqlSetting
     client.connect (err) -> 
       if err 
         console.log "MySQL error connecting: #err.stack" 
-        return false
+        cb "Error"
       console.log "MySQL connected as id #client.threadId"
-      return true
+      cb "Success"
 
   db.executeSQL = (sql, mysqlSetting, cb) ->
     client = mysql.createConnection mysqlSetting
@@ -45,7 +33,7 @@
         cb error, results
       return true
 
-  db.createTable = (table_name, columns, mysqlSetting) ->
+  db.createTable = (table_name, columns, mysqlSetting, cb) ->
     colstring = '('
     i = 0
     for col in columns
@@ -65,23 +53,35 @@
     colstring += ')'
 
     sql = "CREATE TABLE " + table_name + " " + colstring
-    db.executeSQL sql, mysqlSetting, (error, results) -> return
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results
 
   db.isExistTable = (table_name, mysqlSetting, cb) ->
     sql = "SHOW TABLES LIKE '" + table_name + "'"
     db.executeSQL sql, mysqlSetting, (error, results) ->
       cb error, results
 
+  db.getColumns = (table_name, mysqlSetting, cb) ->
+    sql = "SHOW COLUMNS FROM " + table_name
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results  
+
   db.selectData = (table_name, col, val, mysqlSetting, cb) ->
     sql = "SELECT * FROM " + table_name + " WHERE " + col + " = '" + val + "'"
     db.executeSQL sql, mysqlSetting, (error, results) ->
       cb error, results
 
-  db.dropTable = (table_name, mysqlSetting) ->
-    sql = "DROP TABLE " + table_name
-    db.executeSQL sql, mysqlSetting, (error, results) -> return
+  db.deleteData = (table_name, con_col, con_val, mysqlSetting, cb) ->
+    sql = "DELETE FROM " + table_name + " WHERE `" + con_col + "` = '" + con_val + "'"
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results
 
-  db.insertData = (table_name, columns, data, mysqlSetting) ->
+  db.dropTable = (table_name, mysqlSetting, cb) ->
+    sql = "DROP TABLE " + table_name
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results
+
+  db.insertData = (table_name, columns, data, mysqlSetting, cb) ->
     colstring = '('
     i = 0
     for col in columns
@@ -96,7 +96,6 @@
     for d in data
       i = 0
       for dt in d
-        console.log(dt)
         if i > 0
           datastring += ', '
         datastring += '"' + db.escapeString(dt) + '"'
@@ -107,9 +106,10 @@
       jd += 1
 
     sql = "INSERT INTO " + table_name + " " + colstring + " VALUES " + datastring
-    db.executeSQL sql, mysqlSetting, (error, results) -> return
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results
 
-  db.updateData = (table_name, columns, data, con_col, con_val, mysqlSetting) ->
+  db.updateData = (table_name, columns, data, con_col, con_val, mysqlSetting, cb) ->
     colstring = ''
     i = 0
     for col in columns
@@ -119,7 +119,8 @@
       i += 1
 
     sql = "UPDATE " + table_name + " SET " + colstring + " WHERE " + con_col + " = '" + con_val + "'"
-    db.executeSQL sql, mysqlSetting, (error, results) -> return
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results
 
   db.escapeString = (str) ->
     return ("" + str).replace /[\0\x08\x09\x1a\n\r"'\\\%]/g, (char) ->
