@@ -384,7 +384,7 @@ Table = (function(){
     hdata = this.rows;
     whole_table = "";
     title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><table style=\"padding-top: 15px;padding-bottom: 15px; padding-left:20px; padding-right:20px; width:100%;\"><tr><td width=\"50%\">" + "<strong>Table " + i + "</strong><br><br>Name <input id=\"t" + i + ".databaseName\" class=\"btn btn-default btn-xs\" type=\"text\" value=\"" + this.name + "\"></td>";
-    title_div += "<td width=\"50%\" style=\"text-align: right;\"><input type=\"button\" value=\"Save\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\"><input type=\"button\" onclick=\"window.DeleteTable(" + i + ");\" value=\"Del\" style=\"font-size:x-small;\">";
+    title_div += "<td width=\"50%\" style=\"text-align: right;\"><input type=\"button\" value=\"Save\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\"> <input type=\"button\" onclick=\"window.DeleteTable(" + i + ");\" value=\"Delete\" style=\"font-size:x-small;\">";
     title_div += "<br><br>Data Range <input id=\"t" + i + ".databaseRange\" class=\"btn btn-default btn-xs\" style=\"max-width: 105px\" value=\"" + this.range + "\"></td></tr></table>";
     whole_table += title_div;
     begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Column</th><th>Type</th><th>Permitted Values</th><th>Relation</th></tr></thead>";

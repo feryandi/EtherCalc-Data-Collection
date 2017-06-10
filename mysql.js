@@ -18,10 +18,11 @@
       return client.connect(function(err){
         if (err) {
           console.log("MySQL error connecting: " + err + ".stack");
-          cb("Error");
+          cb("error");
+          return;
         }
         console.log("MySQL connected as id " + client + ".threadId");
-        return cb("Success");
+        cb("success");
       });
     };
     db.executeSQL = function(sql, mysqlSetting, cb){

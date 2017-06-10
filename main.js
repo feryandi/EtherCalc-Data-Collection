@@ -331,18 +331,14 @@
           port: this.body.port,
           user: this.body.user,
           password: this.body.password,
-          database: this.body.db
+          database: this.body.database
         };
         console.log(mysqlSetting);
-        return MYSQL.deleteData("test_t1", "2006", "1793", mysqlSetting, function(err, ret){
+        return MYSQL.createConnection(mysqlSetting, function(ret){
           var data;
-          data = [
-            {
-              error: err
-            }, {
-              status: ret
-            }
-          ];
+          data = {
+            status: ret
+          };
           this$.response.type('application/json');
           return this$.response.json(200, data);
         });
@@ -352,12 +348,7 @@
       '/_database/create': function(){
         var this$, mysqlSetting, tablec, table;
         this$ = this;
-        mysqlSetting = {
-          host: "172.17.0.2",
-          user: "root",
-          password: "root",
-          database: "TA"
-        };
+        mysqlSetting = this.body.setting;
         tablec = new Table(null, null);
         table = tablec.TupleDeserialize(this.body.table);
         this$.message = "OK";
@@ -448,35 +439,38 @@
         });
       }
     });
-    this.get({
+    this.post({
       '/_database/state/:room': function(){
-        var mysqlSetting, this$, code_id, name;
-        mysqlSetting = {
-          host: "172.17.0.2",
-          user: "root",
-          password: "root",
-          database: "TA"
-        };
+        var this$, mysqlSetting, code_id, name;
         this$ = this;
+        mysqlSetting = this.body.setting;
         code_id = this.params.room;
         name = "s_database_state";
         return MYSQL.isExistTable(name, mysqlSetting, function(err, results){
-          return MYSQL.selectData(name, "code_id", code_id, mysqlSetting, function(err, results){
+          var result;
+          if (results.length > 0) {
+            return MYSQL.selectData(name, "code_id", code_id, mysqlSetting, function(err, results){
+              console.log(results);
+              this$.response.type('application/json');
+              return this$.response.json(200, results);
+            });
+          } else {
+            result = {
+              code_id: code_id,
+              table_json: ""
+            };
+            results = [];
+            results.push(result);
             this$.response.type('application/json');
             return this$.response.json(200, results);
-          });
+          }
         });
       }
     });
     this.post({
       '/_database/state': function(){
         var mysqlSetting, code_id, table_json, name, data;
-        mysqlSetting = {
-          host: "172.17.0.2",
-          user: "root",
-          password: "root",
-          database: "TA"
-        };
+        mysqlSetting = this.body.setting;
         code_id = this.body.id;
         table_json = this.body.tables;
         name = "s_database_state";

@@ -220,26 +220,19 @@
         port: @body.port,
         user: @body.user,
         password: @body.password,
-        database: @body.db
+        database: @body.database
 
     console.log(mysqlSetting)
 
-    MYSQL.deleteData "test_t1", "2006", "1793", mysqlSetting, (err, ret) ->
-    #MYSQL.createConnection mysqlSetting, (ret) ->
+    MYSQL.createConnection mysqlSetting, (ret) ->
       data =
-        * error: err
         * status: ret
       this$.response.type \application/json
       this$.response.json 200 data    
 
   @post '/_database/create': ->
     this$ = this
-    ## For debuging, hardcode
-    mysqlSetting =
-      * host: "172.17.0.2",
-        user: "root",
-        password: "root",
-        database: "TA"
+    mysqlSetting = @body.setting
 
     tablec = new Table null, null
     table = tablec.TupleDeserialize @body.table
@@ -310,30 +303,29 @@
             this$.response.type \application/json
             this$.response.json 200 data 
 
-  @get '/_database/state/:room': ->
-    ## For debuging, hardcode    
-    mysqlSetting =
-      * host: "172.17.0.2",
-        user: "root",
-        password: "root",
-        database: "TA"
-
+  @post '/_database/state/:room': ->
     this$ = this
+    mysqlSetting = @body.setting
+
     code_id = @params.room
     name = "s_database_state"
     MYSQL.isExistTable name, mysqlSetting, (err, results) ->
-      MYSQL.selectData name, "code_id", code_id, mysqlSetting, (err, results) ->
+      if results.length > 0
+        MYSQL.selectData name, "code_id", code_id, mysqlSetting, (err, results) ->
+          console.log(results)
+          this$.response.type \application/json
+          this$.response.json 200 results
+      else
+        result =
+          * code_id: code_id
+            table_json: ""
+        results = []
+        results.push(result)
         this$.response.type \application/json
         this$.response.json 200 results
 
   @post '/_database/state': ->
-    ## For debuging, hardcode    
-    mysqlSetting =
-      * host: "172.17.0.2",
-        user: "root",
-        password: "root",
-        database: "TA"
-
+    mysqlSetting = @body.setting
     code_id = @body.id
     table_json = @body.tables
 

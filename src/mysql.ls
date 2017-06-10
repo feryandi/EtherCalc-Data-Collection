@@ -17,9 +17,11 @@
     client.connect (err) -> 
       if err 
         console.log "MySQL error connecting: #err.stack" 
-        cb "Error"
+        cb "error"
+        return
       console.log "MySQL connected as id #client.threadId"
-      cb "Success"
+      cb "success"
+      return
 
   db.executeSQL = (sql, mysqlSetting, cb) ->
     client = mysql.createConnection mysqlSetting
