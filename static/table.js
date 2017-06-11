@@ -134,19 +134,21 @@ Table = (function(){
         // DATA RANGE CHECKER
         // Check if the vrange is an JSONArray
         error['error'] = "range";
+        therange = decodeURIComponent(row['vrange']);
+
         // console.log(cellname + " <~ r: " + row['vrange']);
-        if (row['vrange'].charAt(0) == "[" && row['vrange'].slice(-1) == "]") {
+        if (therange.charAt(0) == "[" && therange.slice(-1) == "]") {
           console.log("ARRAY");
         // EX: ["text01","text02"] (JSONArray)
-          if (!(row['vrange'].includes(cell.cstr.toString()))) {
+          if (!(therange.includes(cell.cstr.toString()))) {
             error['description'] = "Not in array of accepted string";
             console.log(error);
             return error;
           }
-        } else if (row['vrange'].includes("-")) {
+        } else if (therange.includes("-")) {
           console.log("BETWEEN");
         // EX: 100-2100 OR 10.5-1000
-          values = row['vrange'].split("-");
+          values = therange.split("-");
           if (values[0] > values[1]) {
             // INVALID: ERROR
           } else {
@@ -158,50 +160,50 @@ Table = (function(){
               return error;
             }
           }
-        } else if (row['vrange'].charAt(0) == "<") {
+        } else if (therange.charAt(0) == "<") {
           console.log("LESS");
         // EX: <200 OR <=200
           num = parseInt(cell.cstr.toString());
           // TO-DO: Check NaN
-          if (row['vrange'].charAt(1) == "=") {
-            val = parseInt(row['vrange'].substr(2));
+          if (therange.charAt(1) == "=") {
+            val = parseInt(therange.substr(2));
             if (!(num <= val)) {
               error['description'] = "Values not in less equals than";
               console.log(error);
               return error;
             }
           } else {
-            val = parseInt(row['vrange'].substr(1));
+            val = parseInt(therange.substr(1));
             if (!(num < val)) {
               error['description'] = "Values not in less than";
               console.log(error);
               return error;
             }
           }
-        } else if (row['vrange'].charAt(0) == ">") {
+        } else if (therange.charAt(0) == ">") {
           console.log("GREATER");
         // EX: >200 OR >=200
           num = parseInt(cell.cstr.toString());
           // TO-DO: Check NaN
-          if (row['vrange'].charAt(1) == "=") {
-            val = parseInt(row['vrange'].substr(2));
+          if (therange.charAt(1) == "=") {
+            val = parseInt(therange.substr(2));
             if (!(num >= val)) {
               error['description'] = "Values not in greater equals than";
               console.log(error);
               return error;
             }
           } else {
-            val = parseInt(row['vrange'].substr(1));
+            val = parseInt(therange.substr(1));
             if (!(num > val)) {
               error['description'] = "Values not in greater than";
               console.log(error);
               return error;
             }            
           }
-        } else if (row['vrange'].charAt(0) == "=") {
+        } else if (therange.charAt(0) == "=") {
           console.log("EQUAL");
         // EX: =200
-          val = parseInt(row['vrange'].substr(1));
+          val = parseInt(therange.substr(1));
           if (num != val) {
             error['description'] = "Values not in equals";
             console.log(error);
@@ -421,7 +423,7 @@ Table = (function(){
         is_bln = 'selected';
       }
       table_datatype = "<td><select id=\"t" + i + ".databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option " + is_non + " value=\"non\">None</option><option " + is_int + " value=\"int\">Integer</option><option " + is_dbl + " value=\"dbl\">Double</option><option " + is_str + " value=\"str\">String</option><option " + is_txt + " value=\"txt\">Text</option><option " + is_bln + " value=\"bln\">Boolean</option></select></td>";
-      table_permitted = "<td><input id=\"t" + i + ".databasePermitted." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['vrange'] + "\" ></td>";
+      table_permitted = "<td><input id=\"t" + i + ".databasePermitted." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + decodeURIComponent(hd['vrange']).replace(/"/g, '&quot;') + "\" ></td>";
       table_relations = "<td><input id=\"t" + i + ".databaseRelation." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['vrel'] + "\" style=\"max-width: 105px\"></td>"
       table_validations = table_datatype + table_permitted + table_relations;
       table_end = "</tr>";

@@ -3,7 +3,7 @@
   this.include = function(){
     return this.client({
       '/player/database.js': function(){
-        var $, SocialCalc, nhr, header_div, sidebar_div, content_div_s, content_div_e, notcon_div, notest_div, plwait_div;
+        var $, SocialCalc, nhr, header_div, error_div, sidebar_div, content_div_s, content_div_e, notcon_div, notest_div, plwait_div;
         $ = window.jQuery || window.$;
         if (!$) {
           return location.reload();
@@ -11,6 +11,7 @@
         SocialCalc = window.SocialCalc || alert('Cannot find window.SocialCalc');
         nhr = "<hr style=\"display: block;height: 1px;border: 0;border-top: 1px solid rgb(204,204,204);margin: 1em 0;padding: 0;\">";
         header_div = "<span style=\"font-size: 14px;\"><br><br><b>Data Table</b></span><br/>You could add new table using two way;<br/>automatic detection and manually add table.<br/>" + nhr + "<b>Automatic Detection</b><br/>Using the automatic detection will reset all of the current table.<br/><input type=\"button\" value=\"Detect Spreadsheet Table\" onclick=\"window.Synchronize();\" style=\"font-size:x-small;\"><br/>" + nhr + "<b>Add Manually</b><br/>Insert a JSON Object consist of `header`, `data`, and `range` to add new table.<br/><div><textarea id=\"databaseManualInput\" name=\"databaseManualInput\" style=\"width: 95%;min-height: 130px;\"></textarea></div></td><td style=\"vertical-align:middle;text-align:right;\"><input type=\"button\" value=\"Add New Table\" onclick=\"window.AddManual();\" style=\"font-size:x-small;\"></td></tr></table>";
+        error_div = "<div id=\"databaseErrorMessages\" style=\"width: 100%; min-height: 15px; background-color: rgb(242,152,137); padding: 15px; \">TEST</div>";
         sidebar_div = "<div style=\"position: relative; float: left; width: 250px; height: 100%; background: rgb(228,228,228); padding-left: 25px; padding-right: 25px;\">" + header_div + "</div>";
         content_div_s = "<div style=\"margin-left: 300px; width: auto; height: 100%; position: relative; overflow: auto; z-index: 1;\">";
         content_div_e = "</div>";
@@ -23,14 +24,16 @@
           gview = sheet.views.database.element;
           content_div = content_div_s;
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
-          sd = JSON.parse(savedData.value);
-          i = 1;
-          for (i$ = 0, len$ = sd.length; i$ < len$; ++i$) {
-            t = sd[i$];
-            table = new Table(null, null);
-            table.Deserialize(JSON.stringify(t));
-            content_div += table.GetHTMLForm(i);
-            i++;
+          if (savedData.value !== null && savedData.value !== "") {
+            sd = JSON.parse(savedData.value);
+            i = 1;
+            for (i$ = 0, len$ = sd.length; i$ < len$; ++i$) {
+              t = sd[i$];
+              table = new Table(null, null);
+              table.Deserialize(JSON.stringify(t));
+              content_div += table.GetHTMLForm(i);
+              i++;
+            }
           }
           content_div += content_div_e;
           return gview.innerHTML = sidebar_div + content_div;
@@ -86,8 +89,8 @@
               console.log(response);
               if (response.length === 1) {
                 savedData.value = response[0]["table_json"];
-                return window.RefreshView();
               }
+              return window.RefreshView();
             },
             error: function(response){
               console.log("Error loading state to database");
@@ -130,7 +133,7 @@
             e = document.getElementById("t" + n + ".databaseType." + i);
             row["vtype"] = e.options[e.selectedIndex].value;
             e = document.getElementById("t" + n + ".databasePermitted." + i);
-            row["vrange"] = e.value;
+            row["vrange"] = encodeURIComponent(e.value);
             e = document.getElementById("t" + n + ".databaseRelation." + i);
             row["vrel"] = e.value;
             i = i + 1;
@@ -184,45 +187,60 @@
           $.ajax(request);
         };
         window.Save = function(){
-          var savedData, sheet, loadsheet, sheetdict, tables, i, i$, len$, t, table, spreadsheet_id, payload, error, ref$, request;
+          var savedData, errorMsg, errCount, sheet, loadsheet, sheetdict, tables, i, i$, len$, t, table, spreadsheet_id, payload, error, ref$, request, val_type, error_box, e;
           console.log("SAVING TO DATABASE");
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          errorMsg = document.getElementById(spreadsheet.idPrefix + "databaseErrorMsg");
+          errorMsg.innerHTML = "Saving...";
+          errCount = 0;
           sheet = SocialCalc.GetSpreadsheetControlObject();
           loadsheet = new LoadSheet(sheet);
           sheetdict = loadsheet.LoadSheetDict();
           console.log(savedData.value);
-          tables = JSON.parse(savedData.value);
-          i = 0;
-          for (i$ = 0, len$ = tables.length; i$ < len$; ++i$) {
-            t = tables[i$];
-            i += 1;
-            console.log("SAVING TABLE " + i);
-            table = new Table(sheetdict, null);
-            table.Deserialize(JSON.stringify(t));
-            spreadsheet_id = SocialCalc._room;
-            payload = {
-              name: SocialCalc._room,
-              table: table.TupleSerializeWithChecker(spreadsheet_id),
-              setting: JSON.parse(document.getElementById(spreadsheet.idPrefix + "databaseLoginData").value)
-            };
-            error = true;
-            error = (ref$ = payload.table.error) != null ? ref$ : false;
-            request = {
-              type: "POST",
-              url: window.location.protocol + "//" + window.location.host + "/_database/create",
-              contentType: "application/json",
-              data: JSON.stringify(payload),
-              success: fn$,
-              error: fn1$
-            };
-            if (!error) {
-              $.ajax(request);
-            } else {
-              console.log("ERROR VALIDATIONS");
-              console.log(payload.table);
+          try {
+            tables = JSON.parse(savedData.value);
+            i = 0;
+            for (i$ = 0, len$ = tables.length; i$ < len$; ++i$) {
+              t = tables[i$];
+              i += 1;
+              console.log("SAVING TABLE " + i);
+              table = new Table(sheetdict, null);
+              table.Deserialize(JSON.stringify(t));
+              spreadsheet_id = SocialCalc._room;
+              payload = {
+                name: SocialCalc._room,
+                table: table.TupleSerializeWithChecker(spreadsheet_id),
+                setting: JSON.parse(document.getElementById(spreadsheet.idPrefix + "databaseLoginData").value)
+              };
+              error = true;
+              error = (ref$ = payload.table.error) != null ? ref$ : false;
+              request = {
+                type: "POST",
+                url: window.location.protocol + "//" + window.location.host + "/_database/create",
+                contentType: "application/json",
+                data: JSON.stringify(payload),
+                success: fn$,
+                error: fn1$
+              };
+              if (!error) {
+                $.ajax(request);
+              } else {
+                errCount += 1;
+                console.log("ERROR VALIDATIONS");
+                console.log(payload.table);
+                val_type = payload.table.error.charAt(0).toUpperCase() + payload.table.error.slice(1);
+                error_box = "<div style=\"background: rgb(255, 210, 202); padding: 5px; border-radius: 3px;\">" + val_type + " validation error on cell " + payload.table.coordinate + "</div>";
+                errorMsg.innerHTML = error_box;
+              }
             }
+            if (errCount === 0) {
+              errorMsg.innerHTML = "Successfully saved all tables!";
+            }
+            window.SaveState();
+          } catch (e$) {
+            e = e$;
+            errorMsg.innerHTML = "Failed saving to database";
           }
-          window.SaveState();
           function fn$(response){
             console.log("OK OK OK MYSQL OK OK OK");
             return console.log(response);
