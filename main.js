@@ -345,6 +345,30 @@
       }
     });
     this.post({
+      '/_database/clean': function(){
+        var this$, mysqlSetting, db, id, dbProcessed;
+        this$ = this;
+        mysqlSetting = this.body.setting;
+        db = this.body.db;
+        id = this.body.id;
+        dbProcessed = 0;
+        return db.forEach(function(item, index, array){
+          return MYSQL.deleteData(item, "_spreadsheet_id", id, mysqlSetting, function(err, res){
+            var data;
+            dbProcessed += 1;
+            if (dbProcessed === array.length) {
+              data = {
+                code: 0,
+                status: "Clean up finished"
+              };
+              this$.response.type('application/json');
+              return this$.response.json(200, data);
+            }
+          });
+        });
+      }
+    });
+    this.post({
       '/_database/create': function(){
         var this$, mysqlSetting, tablec, table;
         this$ = this;
@@ -353,12 +377,14 @@
         table = tablec.TupleDeserialize(this.body.table);
         this$.message = "OK";
         this$.is_need_col_check = true;
+        this$.is_there_other = false;
+        this$.is_column_same = true;
         return MYSQL.isExistTable(table.name, mysqlSetting, function(err, results){
           if (results.length > 0) {
             console.log("Exist. Emptying Table.");
-            return MYSQL.selectData(table.name, "_spreadsheet_id", table.spreadsheet_id, mysqlSetting, function(err, res){
+            return MYSQL.selectNEData(table.name, "_spreadsheet_id", table.spreadsheet_id, mysqlSetting, function(err, res){
               if (res.length > 0) {
-                this$.is_need_col_check = false;
+                this$.is_there_other = true;
               }
               return MYSQL.getColumns(table.name, mysqlSetting, function(err, res){
                 var checked, i, i$, ref$, len$, header, data;
@@ -366,54 +392,68 @@
                 i = 0;
                 if (this$.is_need_col_check) {
                   console.log("xoxo Checking Column Eq oxox");
+                  console.log(res);
                   for (i$ = 0, len$ = (ref$ = table.headers).length; i$ < len$; ++i$) {
                     header = ref$[i$];
-                    if (header.name.trim() !== res[i]["Field"].trim()) {
+                    if (i >= res.length) {
                       checked = false;
-                    }
-                    if (header.type === "VARCHAR") {
-                      if (res[i]["Type"].toLowerCase() !== (header.type + "(160)").toLowerCase()) {
-                        checked = false;
-                      }
-                    } else if (header.type === "INT") {
-                      if (res[i]["Type"].toLowerCase() !== (header.type + "(11)").toLowerCase()) {
-                        checked = false;
-                      }
                     } else {
-                      if (res[i]["Type"].toLowerCase() !== header.type.toLowerCase()) {
+                      if (header.name.trim() !== res[i]["Field"].trim()) {
                         checked = false;
+                      }
+                      if (header.type === "VARCHAR") {
+                        if (res[i]["Type"].toLowerCase() !== (header.type + "(160)").toLowerCase()) {
+                          checked = false;
+                        }
+                      } else if (header.type === "INT") {
+                        if (res[i]["Type"].toLowerCase() !== (header.type + "(11)").toLowerCase()) {
+                          checked = false;
+                        }
+                      } else {
+                        if (res[i]["Type"].toLowerCase() !== header.type.toLowerCase()) {
+                          checked = false;
+                        }
                       }
                     }
                     i += 1;
                   }
                 }
-                if (checked) {
+                this$.is_column_same = checked;
+                if (this$.is_column_same) {
                   return MYSQL.deleteData(table.name, "_spreadsheet_id", table.spreadsheet_id, mysqlSetting, function(err, res){
                     return MYSQL.insertData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
                       var data;
                       console.log(res);
-                      data = [
-                        {
-                          code: 0
-                        }, {
-                          status: this$.message
-                        }
-                      ];
+                      data = {
+                        code: 0,
+                        status: this$.message
+                      };
                       this$.response.type('application/json');
                       return this$.response.json(200, data);
                     });
                   });
+                } else if (!this$.is_column_same && !this$.is_there_other) {
+                  return MYSQL.dropTable(table.name, mysqlSetting, function(err, res){
+                    return MYSQL.createTable(table.name, table.headers, mysqlSetting, function(err, res){
+                      return MYSQL.insertData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
+                        var data;
+                        console.log(res);
+                        data = {
+                          code: 0,
+                          status: this$.message
+                        };
+                        this$.response.type('application/json');
+                        return this$.response.json(200, data);
+                      });
+                    });
+                  });
                 } else {
                   this$.message = "Error validating column equality, table contains data from other spreadsheet";
-                  data = [
-                    {
-                      code: 1
-                    }, {
-                      status: this$.message
-                    }, {
-                      table: table.name
-                    }
-                  ];
+                  data = {
+                    code: 1,
+                    status: this$.message,
+                    table: table.name
+                  };
                   this$.response.type('application/json');
                   return this$.response.json(200, data);
                 }
@@ -424,13 +464,10 @@
               return MYSQL.insertData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
                 var data;
                 console.log(res);
-                data = [
-                  {
-                    code: 0
-                  }, {
-                    status: this$.message
-                  }
-                ];
+                data = {
+                  code: 0,
+                  status: this$.message
+                };
                 this$.response.type('application/json');
                 return this$.response.json(200, data);
               });
@@ -469,13 +506,14 @@
     });
     this.post({
       '/_database/state': function(){
-        var mysqlSetting, code_id, table_json, name, data;
+        var mysqlSetting, code_id, table_json, last_db_json, name, data;
         mysqlSetting = this.body.setting;
         code_id = this.body.id;
         table_json = this.body.tables;
+        last_db_json = this.body.last_db;
         name = "s_database_state";
         MYSQL.isExistTable(name, mysqlSetting, function(err, results){
-          var columns, columnA, columnB, data;
+          var columns, columnA, columnB, columnC, data;
           console.log(results);
           columns = [];
           columnA = [];
@@ -486,12 +524,16 @@
           columnB["name"] = "table_json";
           columnB["type"] = "TEXT";
           columns.push(columnB);
+          columnC = [];
+          columnC["name"] = "last_db_json";
+          columnC["type"] = "TEXT";
+          columns.push(columnC);
           if (results.length <= 0) {
             MYSQL.createTable(name, columns, mysqlSetting, function(err, res){
               return console.log(res);
             });
           }
-          data = [code_id, table_json];
+          data = [code_id, table_json, last_db_json];
           return MYSQL.selectData(name, columnA["name"], code_id, mysqlSetting, function(err, results){
             var ndata;
             if (results.length > 0) {

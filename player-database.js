@@ -50,12 +50,14 @@
           return setting;
         };
         window.SaveState = function(){
-          var savedData, payload, request;
+          var savedData, lastDB, payload, request;
           console.log("Save State");
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          lastDB = document.getElementById(spreadsheet.idPrefix + "databaseLastDB");
           payload = {
             id: SocialCalc._room,
             tables: savedData.value,
+            last_db: lastDB.value,
             setting: JSON.parse(document.getElementById(spreadsheet.idPrefix + "databaseLoginData").value)
           };
           request = {
@@ -74,9 +76,10 @@
           return $.ajax(request);
         };
         window.LoadState = function(){
-          var savedData, payload, request;
+          var savedData, lastDB, payload, request;
           console.log("Load State");
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          lastDB = document.getElementById(spreadsheet.idPrefix + "databaseLastDB");
           payload = {
             setting: JSON.parse(document.getElementById(spreadsheet.idPrefix + "databaseLoginData").value)
           };
@@ -89,6 +92,11 @@
               console.log(response);
               if (response.length === 1) {
                 savedData.value = response[0]["table_json"];
+                if (response[0]["last_db_json"] === "undefined") {
+                  lastDB.value = "";
+                } else {
+                  lastDB.value = response[0]["last_db_json"];
+                }
               }
               return window.RefreshView();
             },
@@ -187,9 +195,10 @@
           $.ajax(request);
         };
         window.Save = function(){
-          var savedData, errorMsg, errCount, sheet, loadsheet, sheetdict, tables, i, i$, len$, t, table, spreadsheet_id, payload, error, ref$, request, val_type, error_box, e;
+          var savedData, lastDB, errorMsg, errCount, sheet, loadsheet, sheetdict, tables, i, dbSaved, dbLast, dbDelete, sd, i$, len$, t, ld, dl, payload, request, table, spreadsheet_id, error, ref$, val_type, error_box, err;
           console.log("SAVING TO DATABASE");
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          lastDB = document.getElementById(spreadsheet.idPrefix + "databaseLastDB");
           errorMsg = document.getElementById(spreadsheet.idPrefix + "databaseErrorMsg");
           errorMsg.innerHTML = "Saving...";
           errCount = 0;
@@ -200,6 +209,46 @@
           try {
             tables = JSON.parse(savedData.value);
             i = 0;
+            dbSaved = [];
+            dbLast = [];
+            dbDelete = [];
+            sd = JSON.parse(savedData.value);
+            for (i$ = 0, len$ = sd.length; i$ < len$; ++i$) {
+              t = sd[i$];
+              dbSaved.push(t["name"]);
+            }
+            ld = JSON.parse(lastDB.value);
+            for (i$ = 0, len$ = ld.length; i$ < len$; ++i$) {
+              t = ld[i$];
+              dbLast.push(t["name"]);
+            }
+            for (i$ = 0, len$ = dbLast.length; i$ < len$; ++i$) {
+              dl = dbLast[i$];
+              if (dbSaved.indexOf(dl) === -1) {
+                dbDelete.push(dl);
+              }
+            }
+            console.log("Collecting Garbage");
+            console.log(dbDelete);
+            payload = {
+              id: SocialCalc._room,
+              db: dbDelete,
+              setting: JSON.parse(document.getElementById(spreadsheet.idPrefix + "databaseLoginData").value)
+            };
+            request = {
+              type: "POST",
+              url: window.location.protocol + "//" + window.location.host + "/_database/clean",
+              contentType: "application/json",
+              data: JSON.stringify(payload),
+              success: function(response){
+                return console.log(response);
+              },
+              error: function(response){
+                console.log("Error cleaning database");
+                return console.log(response);
+              }
+            };
+            $.ajax(request);
             for (i$ = 0, len$ = tables.length; i$ < len$; ++i$) {
               t = tables[i$];
               i += 1;
@@ -236,14 +285,22 @@
             if (errCount === 0) {
               errorMsg.innerHTML = "Successfully saved all tables!";
             }
-            window.SaveState();
           } catch (e$) {
-            e = e$;
+            err = e$;
             errorMsg.innerHTML = "Failed saving to database";
+            console.log(err);
           }
           function fn$(response){
+            var error_box;
             console.log("OK OK OK MYSQL OK OK OK");
-            return console.log(response);
+            console.log(response);
+            if (response.code === 1) {
+              error_box = "<div style=\"background: rgb(255, 210, 202); padding: 5px; border-radius: 3px;\">Cannot override existing table (`" + response.table + "`) with mismatch column</div>";
+              return errorMsg.innerHTML = error_box;
+            } else {
+              lastDB.value = savedData.value;
+              return window.SaveState();
+            }
           }
           function fn1$(response){
             console.log("Error saving data to database");

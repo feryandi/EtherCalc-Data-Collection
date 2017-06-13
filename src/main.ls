@@ -230,6 +230,24 @@
       this$.response.type \application/json
       this$.response.json 200 data    
 
+  @post '/_database/clean': ->
+    this$ = this
+    mysqlSetting = @body.setting
+    db = @body.db
+    id = @body.id
+
+    dbProcessed = 0
+
+    db.forEach (item, index, array) ->
+      MYSQL.deleteData item, "_spreadsheet_id", id, mysqlSetting, (err, res) ->
+        dbProcessed += 1
+        if dbProcessed == array.length
+          data =
+            * code: 0
+              status: "Clean up finished"
+          this$.response.type \application/json
+          this$.response.json 200 data
+
   @post '/_database/create': ->
     this$ = this
     mysqlSetting = @body.setting
@@ -240,56 +258,87 @@
     this$.message = "OK"
     this$.is_need_col_check = true
 
+    this$.is_there_other = false
+    this$.is_column_same = true
+
     # If there exists such table, delete HAHAHA
     MYSQL.isExistTable table.name, mysqlSetting, (err, results) ->
       if results.length > 0
         console.log("Exist. Emptying Table.")
+        ## TO-DO KALO TABELNYA DIDN'T EXISTS ANYMORE GIMANA?, HARUS BISA NGEHAPUS DONG AAAA
+
         ### Bukan DROP-ing table lagi sekarang,
         #MYSQL.dropTable table.name, mysqlSetting, (err, res) ->
         #  console.log(res)
         ## Kalo kolom ga sama denied intinya mah, tipe validasi????
 
-        ### HARUS CEK APAKAH ADA DATA DARI SPREADSHEET LAIN????? !!!!!!
-        MYSQL.selectData table.name, "_spreadsheet_id", table.spreadsheet_id, mysqlSetting, (err, res) ->
+        ## Cek apakah ada data dari spreadsheet lain?
+        MYSQL.selectNEData table.name, "_spreadsheet_id", table.spreadsheet_id, mysqlSetting, (err, res) ->
           if res.length > 0
-            this$.is_need_col_check = false
+            this$.is_there_other = true
           MYSQL.getColumns table.name, mysqlSetting, (err, res) ->
-            # CEK Kecocokan Kolom
+            # Cek Kecocokan Kolom
             checked = true
             i = 0
             if this$.is_need_col_check
               console.log("xoxo Checking Column Eq oxox")
+              console.log(res)
               for header in table.headers
                 ## Check by nama
-                if (header.name.trim! != res[i]["Field"].trim!)
-                  checked = false
-                ## Check by type
-                if header.type == "VARCHAR"
-                  if (res[i]["Type"].toLowerCase() != (header.type + "(160)").toLowerCase())
-                    checked = false
-                else if header.type == "INT"
-                  if (res[i]["Type"].toLowerCase() != (header.type + "(11)").toLowerCase())
-                    checked = false
+                if i >= res.length
+                  checked = false                  
                 else
-                  if (res[i]["Type"].toLowerCase() != (header.type).toLowerCase())
+                  if (header.name.trim! != res[i]["Field"].trim!)
                     checked = false
+                  ## Check by type
+                  if header.type == "VARCHAR"
+                    if (res[i]["Type"].toLowerCase() != (header.type + "(160)").toLowerCase())
+                      checked = false
+                  else if header.type == "INT"
+                    if (res[i]["Type"].toLowerCase() != (header.type + "(11)").toLowerCase())
+                      checked = false
+                  else
+                    if (res[i]["Type"].toLowerCase() != (header.type).toLowerCase())
+                      checked = false
                 i += 1
-            if checked
+            this$.is_column_same = checked
+
+            ## Kalo kolom sama
+            if this$.is_column_same
+              #### OK, DELETE ID YANG SAMA
+              #### Insert
               ## Delete isi semua tabel WHERE id_spreadsheet, isi ulang
               MYSQL.deleteData table.name, "_spreadsheet_id", table.spreadsheet_id, mysqlSetting, (err, res) ->
                 MYSQL.insertData table.name, table.headers, table.data, mysqlSetting, (err, res) ->
                   console.log(res)
                   data =
                     * code: 0
-                    * status: this$.message
+                      status: this$.message
                   this$.response.type \application/json
                   this$.response.json 200 data
+
+            else if not this$.is_column_same and not this$.is_there_other
+              ## Kalo kolom beda dan ga ada yang lain
+              #### DROP
+              #### CREATE BARU ....
+              MYSQL.dropTable table.name, mysqlSetting, (err, res) ->
+                MYSQL.createTable table.name, table.headers, mysqlSetting, (err, res) ->
+                  MYSQL.insertData table.name, table.headers, table.data, mysqlSetting, (err, res) ->
+                    console.log(res)
+                    data =
+                      * code: 0
+                        status: this$.message
+                    this$.response.type \application/json
+                    this$.response.json 200 data            
+
             else
+              ## Kalo kolom beda dan ada yang lain
+              #### ERROR
               this$.message = "Error validating column equality, table contains data from other spreadsheet"
               data =
                 * code: 1
-                * status: this$.message
-                * table: table.name
+                  status: this$.message
+                  table: table.name
               this$.response.type \application/json
               this$.response.json 200 data
       else
@@ -299,7 +348,7 @@
             console.log(res)
             data =
               * code: 0
-              * status: this$.message
+                status: this$.message
             this$.response.type \application/json
             this$.response.json 200 data 
 
@@ -328,6 +377,7 @@
     mysqlSetting = @body.setting
     code_id = @body.id
     table_json = @body.tables
+    last_db_json = @body.last_db
 
     name = "s_database_state"
     MYSQL.isExistTable name, mysqlSetting, (err, results) ->
@@ -344,12 +394,17 @@
       columnB["type"] = "TEXT"
       columns.push(columnB)
 
+      columnC = []
+      columnC["name"] = "last_db_json"
+      columnC["type"] = "TEXT"
+      columns.push(columnC)
+
       if results.length <= 0
         # Create the Table first
         MYSQL.createTable name, columns, mysqlSetting, (err, res) ->
           console.log(res)
 
-      data = [code_id, table_json]
+      data = [code_id, table_json, last_db_json]
 
       MYSQL.selectData name, columnA["name"], code_id, mysqlSetting, (err, results) ->
         if results.length > 0

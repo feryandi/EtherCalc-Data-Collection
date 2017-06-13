@@ -73,6 +73,11 @@
     db.executeSQL sql, mysqlSetting, (error, results) ->
       cb error, results
 
+  db.selectNEData = (table_name, col, val, mysqlSetting, cb) ->
+    sql = "SELECT * FROM " + table_name + " WHERE " + col + " != '" + val + "'"
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results
+
   db.deleteData = (table_name, con_col, con_val, mysqlSetting, cb) ->
     sql = "DELETE FROM " + table_name + " WHERE `" + con_col + "` = '" + con_val + "'"
     db.executeSQL sql, mysqlSetting, (error, results) ->

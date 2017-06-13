@@ -44,10 +44,12 @@
   window.SaveState = ->
     console.log("Save State");
     savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
+    lastDB = document.getElementById(spreadsheet.idPrefix + "databaseLastDB")
 
     payload =
       * id: SocialCalc._room
         tables: savedData.value
+        last_db: lastDB.value
         setting: JSON.parse(document.getElementById(spreadsheet.idPrefix + "databaseLoginData").value)
 
     request =
@@ -65,6 +67,7 @@
   window.LoadState = ->
     console.log("Load State");
     savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
+    lastDB = document.getElementById(spreadsheet.idPrefix + "databaseLastDB")
 
     payload =
       * setting: JSON.parse(document.getElementById(spreadsheet.idPrefix + "databaseLoginData").value)
@@ -77,6 +80,10 @@
           console.log(response)
           if response.length == 1
             savedData.value = response[0]["table_json"]
+            if response[0]["last_db_json"] == "undefined"
+              lastDB.value = ""
+            else
+              lastDB.value = response[0]["last_db_json"]
           window.RefreshView!
         error: (response) ->
           console.log("Error loading state to database")
@@ -178,6 +185,7 @@
   window.Save = ->
     console.log("SAVING TO DATABASE")
     savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
+    lastDB = document.getElementById(spreadsheet.idPrefix + "databaseLastDB")
     errorMsg = document.getElementById(spreadsheet.idPrefix + "databaseErrorMsg")
     errorMsg.innerHTML = "Saving..."
     errCount = 0
@@ -192,6 +200,43 @@
       tables = JSON.parse(savedData.value)
 
       i = 0
+      ## Garbage Collecting
+      dbSaved = []
+      dbLast = []
+      dbDelete = []
+
+      sd = JSON.parse(savedData.value)
+      for t in sd
+        dbSaved.push(t["name"])
+
+      ld = JSON.parse(lastDB.value)
+      for t in ld
+        dbLast.push(t["name"])
+
+      for dl in dbLast
+        if dbSaved.indexOf(dl) == -1
+          dbDelete.push(dl)
+
+      console.log("Collecting Garbage")
+      console.log(dbDelete)
+
+      payload =
+        * id: SocialCalc._room
+          db: dbDelete
+          setting: JSON.parse(document.getElementById(spreadsheet.idPrefix + "databaseLoginData").value)
+
+      request =
+        * type: "POST"
+          url: window.location.protocol + "//" + window.location.host + "/_database/clean"
+          contentType: "application/json"
+          data: JSON.stringify payload
+          success: (response) ->
+            console.log(response)
+          error: (response) ->
+            console.log("Error cleaning database")
+            console.log(response)
+      $.ajax request      
+
       for t in tables
         i += 1
         console.log("SAVING TABLE " + i)
@@ -216,6 +261,12 @@
             success: (response) ->
               console.log("OK OK OK MYSQL OK OK OK")
               console.log(response)
+              if response.code == 1
+                error_box = "<div style=\"background: rgb(255, 210, 202); padding: 5px; border-radius: 3px;\">Cannot override existing table (`" + response.table + "`) with mismatch column</div>"
+                errorMsg.innerHTML = error_box
+              else
+                lastDB.value = savedData.value
+                window.SaveState!
             error: (response) ->
               console.log("Error saving data to database")
               console.log(response)
@@ -230,11 +281,11 @@
           error_box = "<div style=\"background: rgb(255, 210, 202); padding: 5px; border-radius: 3px;\">" + val_type + " validation error on cell " + payload.table.coordinate + "</div>"
           errorMsg.innerHTML = error_box
 
-      if errCount == 0
+      if errCount == 0        
         errorMsg.innerHTML = "Successfully saved all tables!"
-      window.SaveState!
-    catch
+    catch err
       errorMsg.innerHTML = "Failed saving to database"
+      console.log(err)
     return
 
   window.Synchronize = ->

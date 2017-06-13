@@ -86,6 +86,13 @@
         return cb(error, results);
       });
     };
+    db.selectNEData = function(table_name, col, val, mysqlSetting, cb){
+      var sql;
+      sql = "SELECT * FROM " + table_name + " WHERE " + col + " != '" + val + "'";
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
+    };
     db.deleteData = function(table_name, con_col, con_val, mysqlSetting, cb){
       var sql;
       sql = "DELETE FROM " + table_name + " WHERE `" + con_col + "` = '" + con_val + "'";
