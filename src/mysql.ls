@@ -17,9 +17,11 @@
     client.connect (err) -> 
       if err 
         console.log "MySQL error connecting: #err.stack" 
+        client.end()
         cb "error"
         return
       console.log "MySQL connected as id #client.threadId"
+      client.end()
       cb "success"
       return
 
@@ -28,10 +30,12 @@
     client.connect (err) -> 
       if err 
         console.log "MySQL error connecting: #err.stack" 
+        client.end()
         return false
       console.log "MySQL connected as id #client.threadId"
       console.log "SQL: " + sql
-      client.query sql, (error, results, fields) -> 
+      client.query sql, (error, results, fields) ->
+        client.end()
         cb error, results
       return true
 

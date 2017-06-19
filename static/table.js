@@ -97,10 +97,22 @@ Table = (function(){
         cellname = '' + row['data'] + i$;
         cell = this.sheet[this.sheetname]['sheetdict'][cellname];
 
+        // DATA MERGE AND DATA CONTENT
+        mergemap = this.sheet[this.sheetname]['mergemap'];
+        mergetarget = mergemap[cellname];
+        if (mergetarget) {
+          cell.cstr = this.sheet[this.sheetname]['sheetdict'][mergetarget].cstr;
+          cell.mtype = this.sheet[this.sheetname]['sheetdict'][mergetarget].mtype;
+          table['data'][rownum][colnum] = cell.cstr;
+        } else {
+          table['data'][rownum][colnum] = cell.cstr
+        }
+
         error = {};
         error['coordinate'] = cellname;
 
         // DATA TYPE IN DATABASE
+        console.log(">>" + row['vtype'])
         if (row['vtype'] == "int") {
           header['type'] = 'INT';
         } else if (row['vtype'] == "dbl") {
@@ -211,15 +223,6 @@ Table = (function(){
           }
         } else {
           // KOSONG
-        }
-
-        // DATA MERGE AND DATA CONTENT
-        mergemap = this.sheet[this.sheetname]['mergemap'];
-        mergetarget = mergemap[cellname];
-        if (mergetarget) {
-          table['data'][rownum][colnum] = this.sheet[this.sheetname]['sheetdict'][mergetarget].cstr;
-        } else {
-          table['data'][rownum][colnum] = cell.cstr
         }
 
         // DATA RELATION CHECKER, kayanya bukan disini sih harusnya soalnya ngecek antar tabel

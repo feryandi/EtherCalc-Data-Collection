@@ -18,10 +18,12 @@
       return client.connect(function(err){
         if (err) {
           console.log("MySQL error connecting: " + err + ".stack");
+          client.end();
           cb("error");
           return;
         }
         console.log("MySQL connected as id " + client + ".threadId");
+        client.end();
         cb("success");
       });
     };
@@ -31,11 +33,13 @@
       return client.connect(function(err){
         if (err) {
           console.log("MySQL error connecting: " + err + ".stack");
+          client.end();
           return false;
         }
         console.log("MySQL connected as id " + client + ".threadId");
         console.log("SQL: " + sql);
         client.query(sql, function(error, results, fields){
+          client.end();
           return cb(error, results);
         });
         return true;

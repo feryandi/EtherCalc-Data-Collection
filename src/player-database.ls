@@ -209,16 +209,22 @@
       for t in sd
         dbSaved.push(t["name"])
 
-      ld = JSON.parse(lastDB.value)
-      for t in ld
-        dbLast.push(t["name"])
+      ### DISINI NGEBUG
+      if lastDB.value != null || lastDB.value != ""
+        try
+          ld = JSON.parse(lastDB.value)
+          for t in ld
+            dbLast.push(t["name"])
 
-      for dl in dbLast
-        if dbSaved.indexOf(dl) == -1
-          dbDelete.push(dl)
+          for dl in dbLast
+            if dbSaved.indexOf(dl) == -1
+              dbDelete.push(dl)
 
-      console.log("Collecting Garbage")
-      console.log(dbDelete)
+          console.log("Collecting Garbage")
+          console.log(dbDelete)
+        catch err
+          console.log("Not collecting garbage")
+          console.log(err)
 
       payload =
         * id: SocialCalc._room
@@ -349,28 +355,56 @@
 
     savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
     manualData = document.getElementById("databaseManualInput")
+    errorMsg = document.getElementById(spreadsheet.idPrefix + "databaseErrorMsg")
+    errorMsg.innerHTML = ""
+    error_box_s = "<div style=\"background: rgb(255, 210, 202); padding: 5px; border-radius: 3px;\">"
+    error_box_e = "</div>"
 
     if savedData.value == null || savedData.value == ""
       savedData.value = "[]"
 
-    sd = JSON.parse(savedData.value)
-    md = JSON.parse(manualData.value)
+    try
+      sd = JSON.parse(savedData.value)
+      md = JSON.parse(manualData.value)
+    catch
+      console.log("Error - manual input is not valid")
+      errorMsg.innerHTML = error_box_s + "Manual input is not valid" + error_box_e
+      return    
 
     ### CHECK VALIDITY OF MANUAL INPUT
     ## Check for header
     if not md.hasOwnProperty('header')
       console.log("Error - header not found")
+      errorMsg.innerHTML = error_box_s + "Error parsing, header not found" + error_box_e
+      return
+
+    if not (md['header'] instanceof Array)
+      console.log("Error - header not valid JSON Array")
+      errorMsg.innerHTML = error_box_s + "Error parsing, header not valid array" + error_box_e
       return
 
     ## Check for data
     if not md.hasOwnProperty('data')
       console.log("Error - data not found")
+      errorMsg.innerHTML = error_box_s + "Error parsing, data not found" + error_box_e
+      return
+
+    if not (md['data'] instanceof Array)
+      console.log("Error - data not valid JSON Array")
+      errorMsg.innerHTML = error_box_s + "Error parsing, data not valid JSON Array" + error_box_e
       return
 
     ## Check for range
     if not md.hasOwnProperty('range')
       console.log("Error - range not found")
+      errorMsg.innerHTML = error_box_s + "Error parsing, range not found" + error_box_e
       return
+
+    patt = new RegExp("([A-Z]+)([0-9]+):([A-Z]+)([0-9]+)", "g");
+    if !patt.test(md['range']) or md['range'] == ""
+      console.log("Error - range not valid")
+      errorMsg.innerHTML = error_box_s + "Error parsing, range not valid format" + error_box_e
+      return      
 
     ## Completing the missing values using Table  
     table = new Table sheetdict, null
@@ -384,6 +418,7 @@
 
     window.DatabaseOnClick!
     window.SaveState!
+    errorMsg.innerHTML = "Table added successfully"
 
     return
   

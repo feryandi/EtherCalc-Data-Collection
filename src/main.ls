@@ -407,9 +407,14 @@
       data = [code_id, table_json, last_db_json]
 
       MYSQL.selectData name, columnA["name"], code_id, mysqlSetting, (err, results) ->
-        if results.length > 0
-          MYSQL.updateData name, columns, data, columnA["name"], code_id, mysqlSetting, (err, res) ->
-            console.log(res)
+        if results != void
+          if results.length > 0
+            MYSQL.updateData name, columns, data, columnA["name"], code_id, mysqlSetting, (err, res) ->
+              console.log(res)
+          else
+            ndata = [data]
+            MYSQL.insertData name, columns, ndata, mysqlSetting, (err, res) ->
+              console.log(res)
         else
           ndata = [data]
           MYSQL.insertData name, columns, ndata, mysqlSetting, (err, res) ->

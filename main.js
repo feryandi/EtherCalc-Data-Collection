@@ -536,10 +536,17 @@
           data = [code_id, table_json, last_db_json];
           return MYSQL.selectData(name, columnA["name"], code_id, mysqlSetting, function(err, results){
             var ndata;
-            if (results.length > 0) {
-              return MYSQL.updateData(name, columns, data, columnA["name"], code_id, mysqlSetting, function(err, res){
-                return console.log(res);
-              });
+            if (results !== void 8) {
+              if (results.length > 0) {
+                return MYSQL.updateData(name, columns, data, columnA["name"], code_id, mysqlSetting, function(err, res){
+                  return console.log(res);
+                });
+              } else {
+                ndata = [data];
+                return MYSQL.insertData(name, columns, ndata, mysqlSetting, function(err, res){
+                  return console.log(res);
+                });
+              }
             } else {
               ndata = [data];
               return MYSQL.insertData(name, columns, ndata, mysqlSetting, function(err, res){

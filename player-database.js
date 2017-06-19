@@ -195,7 +195,7 @@
           $.ajax(request);
         };
         window.Save = function(){
-          var savedData, lastDB, errorMsg, errCount, sheet, loadsheet, sheetdict, tables, i, dbSaved, dbLast, dbDelete, sd, i$, len$, t, ld, dl, payload, request, table, spreadsheet_id, error, ref$, val_type, error_box, err;
+          var savedData, lastDB, errorMsg, errCount, sheet, loadsheet, sheetdict, tables, i, dbSaved, dbLast, dbDelete, sd, i$, len$, t, ld, dl, err, payload, request, table, spreadsheet_id, error, ref$, val_type, error_box;
           console.log("SAVING TO DATABASE");
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
           lastDB = document.getElementById(spreadsheet.idPrefix + "databaseLastDB");
@@ -217,19 +217,27 @@
               t = sd[i$];
               dbSaved.push(t["name"]);
             }
-            ld = JSON.parse(lastDB.value);
-            for (i$ = 0, len$ = ld.length; i$ < len$; ++i$) {
-              t = ld[i$];
-              dbLast.push(t["name"]);
-            }
-            for (i$ = 0, len$ = dbLast.length; i$ < len$; ++i$) {
-              dl = dbLast[i$];
-              if (dbSaved.indexOf(dl) === -1) {
-                dbDelete.push(dl);
+            if (lastDB.value !== null || lastDB.value !== "") {
+              try {
+                ld = JSON.parse(lastDB.value);
+                for (i$ = 0, len$ = ld.length; i$ < len$; ++i$) {
+                  t = ld[i$];
+                  dbLast.push(t["name"]);
+                }
+                for (i$ = 0, len$ = dbLast.length; i$ < len$; ++i$) {
+                  dl = dbLast[i$];
+                  if (dbSaved.indexOf(dl) === -1) {
+                    dbDelete.push(dl);
+                  }
+                }
+                console.log("Collecting Garbage");
+                console.log(dbDelete);
+              } catch (e$) {
+                err = e$;
+                console.log("Not collecting garbage");
+                console.log(err);
               }
             }
-            console.log("Collecting Garbage");
-            console.log(dbDelete);
             payload = {
               id: SocialCalc._room,
               db: dbDelete,
@@ -365,27 +373,57 @@
           $.ajax(request);
         };
         window.AddManual = function(){
-          var sheet, loadsheet, sheetdict, savedData, manualData, sd, md, table;
+          var sheet, loadsheet, sheetdict, savedData, manualData, errorMsg, error_box_s, error_box_e, sd, md, e, patt, table;
           sheet = SocialCalc.GetSpreadsheetControlObject();
           loadsheet = new LoadSheet(sheet);
           sheetdict = loadsheet.LoadSheetDict();
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
           manualData = document.getElementById("databaseManualInput");
+          errorMsg = document.getElementById(spreadsheet.idPrefix + "databaseErrorMsg");
+          errorMsg.innerHTML = "";
+          error_box_s = "<div style=\"background: rgb(255, 210, 202); padding: 5px; border-radius: 3px;\">";
+          error_box_e = "</div>";
           if (savedData.value === null || savedData.value === "") {
             savedData.value = "[]";
           }
-          sd = JSON.parse(savedData.value);
-          md = JSON.parse(manualData.value);
+          try {
+            sd = JSON.parse(savedData.value);
+            md = JSON.parse(manualData.value);
+          } catch (e$) {
+            e = e$;
+            console.log("Error - manual input is not valid");
+            errorMsg.innerHTML = error_box_s + "Manual input is not valid" + error_box_e;
+            return;
+          }
           if (!md.hasOwnProperty('header')) {
             console.log("Error - header not found");
+            errorMsg.innerHTML = error_box_s + "Error parsing, header not found" + error_box_e;
+            return;
+          }
+          if (!(md['header'] instanceof Array)) {
+            console.log("Error - header not valid JSON Array");
+            errorMsg.innerHTML = error_box_s + "Error parsing, header not valid array" + error_box_e;
             return;
           }
           if (!md.hasOwnProperty('data')) {
             console.log("Error - data not found");
+            errorMsg.innerHTML = error_box_s + "Error parsing, data not found" + error_box_e;
+            return;
+          }
+          if (!(md['data'] instanceof Array)) {
+            console.log("Error - data not valid JSON Array");
+            errorMsg.innerHTML = error_box_s + "Error parsing, data not valid JSON Array" + error_box_e;
             return;
           }
           if (!md.hasOwnProperty('range')) {
             console.log("Error - range not found");
+            errorMsg.innerHTML = error_box_s + "Error parsing, range not found" + error_box_e;
+            return;
+          }
+          patt = new RegExp("([A-Z]+)([0-9]+):([A-Z]+)([0-9]+)", "g");
+          if (!patt.test(md['range']) || md['range'] === "") {
+            console.log("Error - range not valid");
+            errorMsg.innerHTML = error_box_s + "Error parsing, range not valid format" + error_box_e;
             return;
           }
           table = new Table(sheetdict, null);
@@ -396,6 +434,7 @@
           savedData.value = JSON.stringify(sd);
           window.DatabaseOnClick();
           window.SaveState();
+          errorMsg.innerHTML = "Table added successfully";
         };
       }
     });
