@@ -2,7 +2,7 @@
 (function(){
   var join$ = [].join;
   this.include = function(){
-    var Table, FrameFinder, clusterfck, fs, J, csvParse, DB, SC, MYSQL, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, RealBin, DevMode, dataDir, sendFile, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
+    var Table, FrameFinder, clusterfck, fs, J, csvParse, DB, SC, MYSQL, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, RealBin, DevMode, dataDir, sendFile, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, dbCleanup, writeLog, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
     this.use('json', this.app.router, this.express['static'](__dirname));
     this.app.use('/edit', this.express['static'](__dirname));
     this.app.use('/view', this.express['static'](__dirname));
@@ -344,135 +344,365 @@
         });
       }
     });
+    dbCleanup = function(db, id, with_delete, mysqlSetting, cb){
+      var dbProcessed, db_log_name;
+      dbProcessed = 0;
+      db_log_name = "s_database_wlog";
+      return db.forEach(function(item, index, array){
+        var wcon_log;
+        wcon_log = "`table` = '" + item + "' and `s_id` = '" + id + "'";
+        return MYSQL.selectWhereData(db_log_name, "`uniq_key`, `col`", wcon_log, mysqlSetting, function(err, res){
+          var result, headers, rl, i$, len$, r, processed;
+          console.log("clean select");
+          console.log(res);
+          result = [];
+          headers = [];
+          rl = 0;
+          for (i$ = 0, len$ = res.length; i$ < len$; ++i$) {
+            r = res[i$];
+            if (!(result[r.col] instanceof Array)) {
+              result[r.col] = [];
+              rl += 1;
+              headers.push(r.col);
+            }
+            result[r.col].push(r.uniq_key);
+          }
+          console.log(result);
+          processed = 0;
+          if (rl > 0) {
+            return MYSQL.getUniqueColumns(item, mysqlSetting, function(err, res){
+              var ucol, index;
+              ucol = "_id";
+              if (res.length > 0) {
+                ucol = res[0]["Field"];
+              }
+              index = headers.indexOf(ucol);
+              headers.splice(index, 1);
+              return headers.forEach(function(value, index, harray){
+                var wcon, i, i$, ref$, len$, id;
+                wcon = "";
+                i = 0;
+                for (i$ = 0, len$ = (ref$ = result[value]).length; i$ < len$; ++i$) {
+                  id = ref$[i$];
+                  wcon += "`" + ucol + "` = '" + id + "'";
+                  i += 1;
+                  if (i !== result[value].length) {
+                    wcon += " OR ";
+                  }
+                }
+                return MYSQL.updateWhereData(item, [{
+                  "name": value
+                }], ["NULL"], wcon, mysqlSetting, function(err, res){
+                  processed += 1;
+                  if (processed === harray.length) {
+                    return MYSQL.deleteWhereData(db_log_name, wcon_log, mysqlSetting, function(err, res){
+                      return MYSQL.cleanNullRow(item, with_delete, mysqlSetting, function(err, res){
+                        dbProcessed += 1;
+                        if (dbProcessed === array.length) {
+                          return cb("Clean up finished");
+                        }
+                      });
+                    });
+                  }
+                });
+              });
+            });
+          } else {
+            return cb("Nothing to clean up");
+          }
+        });
+      });
+    };
     this.post({
       '/_database/clean': function(){
-        var this$, mysqlSetting, db, id, dbProcessed;
+        var this$, mysqlSetting, db, id;
         this$ = this;
         mysqlSetting = this.body.setting;
         db = this.body.db;
         id = this.body.id;
-        dbProcessed = 0;
-        return db.forEach(function(item, index, array){
-          return MYSQL.deleteData(item, "_spreadsheet_id", id, mysqlSetting, function(err, res){
-            var data;
-            dbProcessed += 1;
-            if (dbProcessed === array.length) {
-              data = {
-                code: 0,
-                status: "Clean up finished"
-              };
-              this$.response.type('application/json');
-              return this$.response.json(200, data);
-            }
-          });
+        return dbCleanup(db, id, true, mysqlSetting, function(status){
+          var data;
+          data = {
+            code: 0,
+            status: status
+          };
+          this$.response.type('application/json');
+          return this$.response.json(200, data);
         });
       }
     });
+    writeLog = function(start, affected, unique_vals, table, mysqlSetting, cb){
+      var db_log_name, db_log_columns_c, data, i$, to$, i, j$, ref$, len$, col, d, uv, len1$;
+      console.log("WRITE LOG");
+      console.log(start);
+      console.log(affected);
+      db_log_name = "s_database_wlog";
+      db_log_columns_c = [
+        {
+          "name": "table",
+          "type": "VARCHAR"
+        }, {
+          "name": "col",
+          "type": "VARCHAR"
+        }, {
+          "name": "uniq_key",
+          "type": "VARCHAR"
+        }, {
+          "name": "s_id",
+          "type": "VARCHAR"
+        }
+      ];
+      data = [];
+      if (unique_vals.length <= 0) {
+        for (i$ = start, to$ = affected + start - 1; i$ <= to$; ++i$) {
+          i = i$;
+          for (j$ = 0, len$ = (ref$ = table.headers).length; j$ < len$; ++j$) {
+            col = ref$[j$];
+            d = [table.name, col.name.trim(), i, table.spreadsheet_id];
+            data.push(d);
+          }
+        }
+      } else {
+        for (i$ = 0, len$ = unique_vals.length; i$ < len$; ++i$) {
+          uv = unique_vals[i$];
+          for (j$ = 0, len1$ = (ref$ = table.headers).length; j$ < len1$; ++j$) {
+            col = ref$[j$];
+            d = [table.name, col.name.trim(), uv, table.spreadsheet_id];
+            data.push(d);
+          }
+        }
+      }
+      return MYSQL.insertDupData(db_log_name, db_log_columns_c, data, "s_id", mysqlSetting, function(err, res){
+        return cb(err, res);
+      });
+    };
     this.post({
       '/_database/create': function(){
-        var this$, mysqlSetting, tablec, table;
+        var this$, mysqlSetting, tablec, table, db_log_name, db_log_columns, db_log_columns_c;
         this$ = this;
         mysqlSetting = this.body.setting;
         tablec = new Table(null, null);
         table = tablec.TupleDeserialize(this.body.table);
         this$.message = "OK";
-        this$.is_need_col_check = true;
         this$.is_there_other = false;
-        this$.is_column_same = true;
-        return MYSQL.isExistTable(table.name, mysqlSetting, function(err, results){
-          if (results.length > 0) {
-            console.log("Exist. Emptying Table.");
-            return MYSQL.selectNEData(table.name, "_spreadsheet_id", table.spreadsheet_id, mysqlSetting, function(err, res){
-              if (res.length > 0) {
-                this$.is_there_other = true;
-              }
-              return MYSQL.getColumns(table.name, mysqlSetting, function(err, res){
-                var checked, i, i$, ref$, len$, header, data;
-                checked = true;
-                i = 0;
-                if (this$.is_need_col_check) {
+        this$.is_column_same = false;
+        this$.is_unique_same = false;
+        db_log_name = "s_database_wlog";
+        db_log_columns = [
+          {
+            "name": "table",
+            "type": "VARCHAR"
+          }, {
+            "name": "col",
+            "type": "VARCHAR"
+          }, {
+            "name": "uniq_key",
+            "type": "VARCHAR"
+          }, {
+            "name": "s_id",
+            "type": "VARCHAR"
+          }, {
+            "name": "`table`, `col`, `uniq_key`",
+            "type": "CUNIQ"
+          }
+        ];
+        db_log_columns_c = [
+          {
+            "name": "table",
+            "type": "VARCHAR"
+          }, {
+            "name": "col",
+            "type": "VARCHAR"
+          }, {
+            "name": "uniq_key",
+            "type": "VARCHAR"
+          }, {
+            "name": "s_id",
+            "type": "VARCHAR"
+          }
+        ];
+        return MYSQL.isExistTable(db_log_name, mysqlSetting, function(err, results){
+          if (results.length <= 0) {
+            MYSQL.createTable(db_log_name, db_log_columns, mysqlSetting, function(err, res){
+              return console.log(res);
+            });
+          }
+          return MYSQL.isExistTable(table.name, mysqlSetting, function(err, results){
+            var wcon;
+            if (results.length <= 0) {
+              return MYSQL.createTable(table.name, table.headers, mysqlSetting, function(err, res){
+                return MYSQL.insertData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
+                  return writeLog(res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, function(err, res){
+                    var data;
+                    console.log(res);
+                    data = {
+                      code: 0,
+                      status: this$.message
+                    };
+                    this$.response.type('application/json');
+                    return this$.response.json(200, data);
+                  });
+                });
+              });
+            } else {
+              console.log("Table exists, where all broken and im tired");
+              wcon = "`s_id` != '" + table.spreadsheet_id + "'";
+              return MYSQL.selectWhereData(db_log_name, "`_id`", wcon, mysqlSetting, function(err, res){
+                if (res.length > 0) {
+                  this$.is_there_other = true;
+                }
+                return MYSQL.getColumns(table.name, mysqlSetting, function(err, res){
+                  var colmatch, unqmatch, unqtotal, notmatch, name_not_unique, i$, len$, r, ref$, header, checked, j$, len1$, same_name, data;
                   console.log("xoxo Checking Column Eq oxox");
                   console.log(res);
+                  colmatch = [];
+                  unqmatch = [];
+                  unqtotal = 0;
+                  notmatch = [];
+                  name_not_unique = [];
+                  for (i$ = 0, len$ = res.length; i$ < len$; ++i$) {
+                    r = res[i$];
+                    if (r["Key"].toLowerCase() === "uni") {
+                      unqtotal += 1;
+                    }
+                  }
                   for (i$ = 0, len$ = (ref$ = table.headers).length; i$ < len$; ++i$) {
                     header = ref$[i$];
-                    if (i >= res.length) {
-                      checked = false;
-                    } else {
-                      if (header.name.trim() !== res[i]["Field"].trim()) {
-                        checked = false;
+                    checked = false;
+                    for (j$ = 0, len1$ = res.length; j$ < len1$; ++j$) {
+                      r = res[j$];
+                      same_name = false;
+                      if (header.name.trim() === r["Field"].trim()) {
+                        same_name = true;
+                        if (header.type === "VARCHAR") {
+                          if (r["Type"].toLowerCase() === (header.type + "(160)").toLowerCase()) {
+                            checked = true;
+                          }
+                        } else if (header.type === "INT") {
+                          if (r["Type"].toLowerCase() === (header.type + "(11)").toLowerCase()) {
+                            checked = true;
+                          }
+                        } else {
+                          if (r["Type"].toLowerCase() === header.type.toLowerCase()) {
+                            checked = true;
+                          }
+                        }
                       }
-                      if (header.type === "VARCHAR") {
-                        if (res[i]["Type"].toLowerCase() !== (header.type + "(160)").toLowerCase()) {
-                          checked = false;
+                      if (same_name && !checked) {
+                        name_not_unique.push(header);
+                      }
+                      if (checked) {
+                        colmatch.push(header);
+                        if (header.unique) {
+                          if (r["Key"].toLowerCase() === "uni") {
+                            unqmatch.push(header);
+                          }
                         }
-                      } else if (header.type === "INT") {
-                        if (res[i]["Type"].toLowerCase() !== (header.type + "(11)").toLowerCase()) {
-                          checked = false;
-                        }
-                      } else {
-                        if (res[i]["Type"].toLowerCase() !== header.type.toLowerCase()) {
-                          checked = false;
-                        }
+                        break;
                       }
                     }
-                    i += 1;
+                    if (!checked) {
+                      if (header.name !== "_id") {
+                        notmatch.push(header);
+                      }
+                    }
                   }
-                }
-                this$.is_column_same = checked;
-                if (this$.is_column_same) {
-                  return MYSQL.deleteData(table.name, "_spreadsheet_id", table.spreadsheet_id, mysqlSetting, function(err, res){
-                    return MYSQL.insertData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
-                      var data;
-                      console.log(res);
-                      data = {
-                        code: 0,
-                        status: this$.message
-                      };
-                      this$.response.type('application/json');
-                      return this$.response.json(200, data);
+                  console.log(colmatch);
+                  console.log(unqmatch);
+                  console.log(unqtotal);
+                  console.log(notmatch);
+                  if (notmatch.length === 0) {
+                    this$.is_column_same = true;
+                  }
+                  if (this$.is_column_same && unqmatch.length === unqtotal) {
+                    return dbCleanup([table.name], table.spreadsheet_id, false, mysqlSetting, function(status){
+                      return MYSQL.insertDupMultiData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
+                        return writeLog(res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, function(err, res){
+                          var data;
+                          console.log(res);
+                          data = {
+                            code: 0,
+                            status: this$.message
+                          };
+                          this$.response.type('application/json');
+                          return this$.response.json(200, data);
+                        });
+                      });
                     });
-                  });
-                } else if (!this$.is_column_same && !this$.is_there_other) {
-                  return MYSQL.dropTable(table.name, mysqlSetting, function(err, res){
-                    return MYSQL.createTable(table.name, table.headers, mysqlSetting, function(err, res){
-                      return MYSQL.insertData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
-                        var data;
-                        console.log(res);
+                  } else if (!this$.is_column_same && !this$.is_there_other && unqmatch.length === unqtotal) {
+                    return MYSQL.dropTable(table.name, mysqlSetting, function(err, res){
+                      return MYSQL.createTable(table.name, table.headers, mysqlSetting, function(err, res){
+                        return MYSQL.insertDupMultiData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
+                          return writeLog(res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, function(err, res){
+                            var data;
+                            console.log(res);
+                            data = {
+                              code: 0,
+                              status: this$.message
+                            };
+                            this$.response.type('application/json');
+                            return this$.response.json(200, data);
+                          });
+                        });
+                      });
+                    });
+                  } else {
+                    if (name_not_unique.length <= 0) {
+                      if (unqtotal > 0) {
+                        if (unqmatch.length === unqtotal) {
+                          return dbCleanup([table.name], table.spreadsheet_id, false, mysqlSetting, function(status){
+                            return MYSQL.addColumns(table.name, notmatch, mysqlSetting, function(err, res){
+                              return MYSQL.insertDupMultiData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
+                                console.log("Diff col insert");
+                                console.log(res);
+                                return writeLog(res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, function(err, res){
+                                  var data;
+                                  console.log(res);
+                                  data = {
+                                    code: 0,
+                                    status: this$.message
+                                  };
+                                  this$.response.type('application/json');
+                                  return this$.response.json(200, data);
+                                });
+                              });
+                            });
+                          });
+                        } else {
+                          this$.message = "Must contain all and same unique column";
+                          data = {
+                            code: 1,
+                            status: this$.message,
+                            table: table.name
+                          };
+                          this$.response.type('application/json');
+                          return this$.response.json(200, data);
+                        }
+                      } else {
+                        this$.message = "Cannot append different column on table without unique column";
                         data = {
-                          code: 0,
-                          status: this$.message
+                          code: 1,
+                          status: this$.message,
+                          table: table.name
                         };
                         this$.response.type('application/json');
                         return this$.response.json(200, data);
-                      });
-                    });
-                  });
-                } else {
-                  this$.message = "Error validating column equality, table contains data from other spreadsheet";
-                  data = {
-                    code: 1,
-                    status: this$.message,
-                    table: table.name
-                  };
-                  this$.response.type('application/json');
-                  return this$.response.json(200, data);
-                }
+                      }
+                    } else {
+                      this$.message = "Error contain column that has same name with different data type";
+                      data = {
+                        code: 1,
+                        status: this$.message,
+                        table: table.name
+                      };
+                      this$.response.type('application/json');
+                      return this$.response.json(200, data);
+                    }
+                  }
+                });
               });
-            });
-          } else {
-            return MYSQL.createTable(table.name, table.headers, mysqlSetting, function(err, res){
-              return MYSQL.insertData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
-                var data;
-                console.log(res);
-                data = {
-                  code: 0,
-                  status: this$.message
-                };
-                this$.response.type('application/json');
-                return this$.response.json(200, data);
-              });
-            });
-          }
+            }
+          });
         });
       }
     });

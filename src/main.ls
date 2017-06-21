@@ -230,23 +230,91 @@
       this$.response.type \application/json
       this$.response.json 200 data    
 
+  dbCleanup = (db, id, with_delete, mysqlSetting, cb) ->
+    dbProcessed = 0
+    db_log_name = "s_database_wlog"
+    db.forEach (item, index, array) ->
+      wcon_log = "`table` = '" + item + "' and `s_id` = '" + id + "'"
+      MYSQL.selectWhereData db_log_name, "`uniq_key`, `col`", wcon_log, mysqlSetting, (err, res) ->
+        console.log("clean select")
+        console.log(res)
+
+        result = []
+        headers = []
+        rl = 0
+        for r in res
+          if !(result[r.col] instanceof Array)
+            result[r.col] = []
+            rl += 1
+            headers.push(r.col)
+          result[r.col].push(r.uniq_key)
+        console.log(result)
+
+        processed = 0
+        if rl > 0
+          MYSQL.getUniqueColumns item, mysqlSetting, (err, res) ->
+            ucol = "_id"
+            if res.length > 0
+              ucol = res[0]["Field"]
+
+            index = headers.indexOf ucol 
+            headers.splice index, 1
+
+            headers.forEach (value, index, harray) ->
+              ## Condition
+              wcon = ""
+              i = 0
+              for id in result[value]
+                wcon += "`" + ucol + "` = '" + id + "'"
+                i += 1
+                if i != result[value].length
+                  wcon += " OR "
+              MYSQL.updateWhereData item, [{"name":value}], ["NULL"], wcon, mysqlSetting, (err, res) ->
+                processed += 1
+                if (processed == harray.length) 
+                  MYSQL.deleteWhereData db_log_name, wcon_log, mysqlSetting, (err, res) ->
+                    MYSQL.cleanNullRow item, with_delete, mysqlSetting, (err, res) ->
+                      dbProcessed += 1
+                      if (dbProcessed == array.length)
+                        cb "Clean up finished"
+        else
+          cb "Nothing to clean up"
+    
   @post '/_database/clean': ->
     this$ = this
     mysqlSetting = @body.setting
     db = @body.db
     id = @body.id
+    dbCleanup db, id, true, mysqlSetting, (status) ->
+      data =
+        * code: 0
+          status: status
+      this$.response.type \application/json
+      this$.response.json 200 data
 
-    dbProcessed = 0
+  writeLog = (start, affected, unique_vals, table, mysqlSetting, cb) ->
+    console.log("WRITE LOG")
+    console.log(start)
+    console.log(affected)
+    db_log_name = "s_database_wlog"
+    db_log_columns_c = [{"name": "table", "type": "VARCHAR"}, {"name": "col", "type": "VARCHAR"}, {"name": "uniq_key", "type": "VARCHAR"}, {"name": "s_id", "type": "VARCHAR"}]
 
-    db.forEach (item, index, array) ->
-      MYSQL.deleteData item, "_spreadsheet_id", id, mysqlSetting, (err, res) ->
-        dbProcessed += 1
-        if dbProcessed == array.length
-          data =
-            * code: 0
-              status: "Clean up finished"
-          this$.response.type \application/json
-          this$.response.json 200 data
+    data = []
+    ## THIS IS ONLY WORKS WITH 1 COLUMN OF UNIQUE VALS
+    if unique_vals.length <= 0
+      # Naive
+      for i from start to (affected + start - 1)
+        for col in table.headers
+          d = [table.name, col.name.trim!, i, table.spreadsheet_id]
+          data.push d
+    else
+      for uv in unique_vals
+        for col in table.headers
+          d = [table.name, col.name.trim!, uv, table.spreadsheet_id]
+          data.push d
+
+    MYSQL.insertDupData db_log_name, db_log_columns_c, data, "s_id", mysqlSetting, (err, res) ->
+      cb err, res
 
   @post '/_database/create': ->
     this$ = this
@@ -256,101 +324,179 @@
     table = tablec.TupleDeserialize @body.table
 
     this$.message = "OK"
-    this$.is_need_col_check = true
 
     this$.is_there_other = false
-    this$.is_column_same = true
+    this$.is_column_same = false
+    this$.is_unique_same = false
 
-    # If there exists such table, delete HAHAHA
-    MYSQL.isExistTable table.name, mysqlSetting, (err, results) ->
-      if results.length > 0
-        console.log("Exist. Emptying Table.")
-        ## TO-DO KALO TABELNYA DIDN'T EXISTS ANYMORE GIMANA?, HARUS BISA NGEHAPUS DONG AAAA
+    # Checking whether the logging table is exists or not
+    db_log_name = "s_database_wlog"
+    db_log_columns = [{"name": "table", "type": "VARCHAR"}, {"name": "col", "type": "VARCHAR"}, {"name": "uniq_key", "type": "VARCHAR"}, {"name": "s_id", "type": "VARCHAR"}, {"name": "`table`, `col`, `uniq_key`", "type": "CUNIQ"}]
+    db_log_columns_c = [{"name": "table", "type": "VARCHAR"}, {"name": "col", "type": "VARCHAR"}, {"name": "uniq_key", "type": "VARCHAR"}, {"name": "s_id", "type": "VARCHAR"}]
 
-        ### Bukan DROP-ing table lagi sekarang,
-        #MYSQL.dropTable table.name, mysqlSetting, (err, res) ->
-        #  console.log(res)
-        ## Kalo kolom ga sama denied intinya mah, tipe validasi????
+    MYSQL.isExistTable db_log_name, mysqlSetting, (err, results) ->
+      if results.length <= 0
+        MYSQL.createTable db_log_name, db_log_columns, mysqlSetting, (err, res) ->
+          console.log(res)
+      ## PRONE TO ERROR, CALLBACK BISA BELUM SELESAI
 
-        ## Cek apakah ada data dari spreadsheet lain?
-        MYSQL.selectNEData table.name, "_spreadsheet_id", table.spreadsheet_id, mysqlSetting, (err, res) ->
-          if res.length > 0
-            this$.is_there_other = true
-          MYSQL.getColumns table.name, mysqlSetting, (err, res) ->
-            # Cek Kecocokan Kolom
-            checked = true
-            i = 0
-            if this$.is_need_col_check
+      ## Must create new algorithm here...
+      MYSQL.isExistTable table.name, mysqlSetting, (err, results) ->
+        if results.length <= 0
+          # Create the Table first, if no table before
+          # Buat juga Unique column
+          # Buat sekarang cuma bisa ditentukan pas pertamakali database dibuat, ga bisa bebas
+          MYSQL.createTable table.name, table.headers, mysqlSetting, (err, res) ->
+            MYSQL.insertData table.name, table.headers, table.data, mysqlSetting, (err, res) ->
+              # Get affected row and start insert id
+              writeLog res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, (err, res) ->
+                console.log(res)
+                data =
+                  * code: 0
+                    status: this$.message
+                this$.response.type \application/json
+                this$.response.json 200 data 
+        else
+          console.log("Table exists, where all broken and im tired")
+          ## Cek apakah ada data dari spreadsheet lain?
+          wcon = "`s_id` != '" + table.spreadsheet_id + "'"
+          MYSQL.selectWhereData db_log_name, "`_id`", wcon, mysqlSetting, (err, res) ->
+            if res.length > 0
+              this$.is_there_other = true
+            MYSQL.getColumns table.name, mysqlSetting, (err, res) ->
+              # Cek Kecocokan Kolom
               console.log("xoxo Checking Column Eq oxox")
               console.log(res)
-              for header in table.headers
-                ## Check by nama
-                if i >= res.length
-                  checked = false                  
-                else
-                  if (header.name.trim! != res[i]["Field"].trim!)
-                    checked = false
-                  ## Check by type
-                  if header.type == "VARCHAR"
-                    if (res[i]["Type"].toLowerCase() != (header.type + "(160)").toLowerCase())
-                      checked = false
-                  else if header.type == "INT"
-                    if (res[i]["Type"].toLowerCase() != (header.type + "(11)").toLowerCase())
-                      checked = false
-                  else
-                    if (res[i]["Type"].toLowerCase() != (header.type).toLowerCase())
-                      checked = false
-                i += 1
-            this$.is_column_same = checked
 
-            ## Kalo kolom sama
-            if this$.is_column_same
-              #### OK, DELETE ID YANG SAMA
-              #### Insert
-              ## Delete isi semua tabel WHERE id_spreadsheet, isi ulang
-              MYSQL.deleteData table.name, "_spreadsheet_id", table.spreadsheet_id, mysqlSetting, (err, res) ->
-                MYSQL.insertData table.name, table.headers, table.data, mysqlSetting, (err, res) ->
-                  console.log(res)
+              # Urutan sekarang tidak diperhitungkan
+              colmatch = []
+              unqmatch = []
+              unqtotal = 0
+              notmatch = []
+              name_not_unique = []
+
+              for r in res
+                if r["Key"].toLowerCase() == "uni"
+                  unqtotal += 1
+
+              for header in table.headers
+                checked = false
+                for r in res
+                  same_name = false
+                  if header.name.trim! == r["Field"].trim!
+                    same_name = true
+                    if header.type == "VARCHAR"
+                      if (r["Type"].toLowerCase() == (header.type + "(160)").toLowerCase())
+                        checked = true
+                    else if header.type == "INT"
+                      if (r["Type"].toLowerCase() == (header.type + "(11)").toLowerCase())
+                        checked = true
+                    else
+                      if (r["Type"].toLowerCase() == (header.type).toLowerCase())
+                        checked = true
+                  if same_name and not checked
+                    name_not_unique.push(header)
+                  if checked
+                    colmatch.push(header)
+                    if header.unique
+                      if r["Key"].toLowerCase() == "uni"
+                        unqmatch.push(header)
+                    break;
+                if not checked
+                  if header.name != "_id"
+                    notmatch.push(header)
+
+              console.log(colmatch)
+              console.log(unqmatch)
+              console.log(unqtotal)
+              console.log(notmatch)
+
+              if notmatch.length == 0
+                this$.is_column_same = true
+
+              ## Kalo kolom sama
+              if this$.is_column_same and unqmatch.length == unqtotal
+                #### OK, DELETE ID YANG SAMA
+                #### Insert
+                ## Delete isi semua tabel WHERE id_spreadsheet, isi ulang
+                dbCleanup [table.name], table.spreadsheet_id, false, mysqlSetting, (status) ->
+                  MYSQL.insertDupMultiData table.name, table.headers, table.data, mysqlSetting, (err, res) ->
+                    writeLog res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, (err, res) ->
+                      console.log(res)
+                      data =
+                        * code: 0
+                          status: this$.message
+                      this$.response.type \application/json
+                      this$.response.json 200 data 
+
+              else if not this$.is_column_same and not this$.is_there_other and unqmatch.length == unqtotal
+                ## Kalo kolom beda dan ga ada yang lain
+                #### DROP
+                #### CREATE BARU ....
+                MYSQL.dropTable table.name, mysqlSetting, (err, res) ->
+                  MYSQL.createTable table.name, table.headers, mysqlSetting, (err, res) ->
+                    MYSQL.insertDupMultiData table.name, table.headers, table.data, mysqlSetting, (err, res) ->
+                      writeLog res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, (err, res) ->
+                        console.log(res)
+                        data =
+                          * code: 0
+                            status: this$.message
+                        this$.response.type \application/json
+                        this$.response.json 200 data
+              else
+                ## Kalo kolom beda dan ada yang lain
+                if name_not_unique.length <= 0
+                  if unqtotal > 0
+                    if unqmatch.length == unqtotal
+                      ## Cek column
+                      #### Kalo column nya sama... (udah diatas)
+                      ## ----------------------------------------
+                      #### Alter table buat nambahin column yang ga ada...
+                      dbCleanup [table.name], table.spreadsheet_id, false, mysqlSetting, (status) ->
+                        MYSQL.addColumns table.name, notmatch, mysqlSetting, (err, res) ->
+                          MYSQL.insertDupMultiData table.name, table.headers, table.data, mysqlSetting, (err, res) ->
+                            console.log("Diff col insert")
+                            console.log(res)
+                            writeLog res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, (err, res) ->
+                              console.log(res)
+                              data =
+                                * code: 0
+                                  status: this$.message
+                              this$.response.type \application/json
+                              this$.response.json 200 data
+
+                    else
+                      #### ERROR
+                      #this$.message = "Error validating column equality, table contains data from other spreadsheet"
+                      this$.message = "Must contain all and same unique column"
+                      data =
+                        * code: 1
+                          status: this$.message
+                          table: table.name
+                      this$.response.type \application/json
+                      this$.response.json 200 data
+                  else
+                    #### ERROR
+                    #this$.message = "Error validating column equality, table contains data from other spreadsheet"
+                    this$.message = "Cannot append different column on table without unique column"
+                    data =
+                      * code: 1
+                        status: this$.message
+                        table: table.name
+                    this$.response.type \application/json
+                    this$.response.json 200 data
+
+                else
+                  #### ERROR
+                  #this$.message = "Error validating column equality, table contains data from other spreadsheet"
+                  this$.message = "Error contain column that has same name with different data type"
                   data =
-                    * code: 0
+                    * code: 1
                       status: this$.message
+                      table: table.name
                   this$.response.type \application/json
                   this$.response.json 200 data
 
-            else if not this$.is_column_same and not this$.is_there_other
-              ## Kalo kolom beda dan ga ada yang lain
-              #### DROP
-              #### CREATE BARU ....
-              MYSQL.dropTable table.name, mysqlSetting, (err, res) ->
-                MYSQL.createTable table.name, table.headers, mysqlSetting, (err, res) ->
-                  MYSQL.insertData table.name, table.headers, table.data, mysqlSetting, (err, res) ->
-                    console.log(res)
-                    data =
-                      * code: 0
-                        status: this$.message
-                    this$.response.type \application/json
-                    this$.response.json 200 data            
-
-            else
-              ## Kalo kolom beda dan ada yang lain
-              #### ERROR
-              this$.message = "Error validating column equality, table contains data from other spreadsheet"
-              data =
-                * code: 1
-                  status: this$.message
-                  table: table.name
-              this$.response.type \application/json
-              this$.response.json 200 data
-      else
-        # Create the Table first, if no table before
-        MYSQL.createTable table.name, table.headers, mysqlSetting, (err, res) ->
-          MYSQL.insertData table.name, table.headers, table.data, mysqlSetting, (err, res) ->
-            console.log(res)
-            data =
-              * code: 0
-                status: this$.message
-            this$.response.type \application/json
-            this$.response.json 200 data 
 
   @post '/_database/state/:room': ->
     this$ = this

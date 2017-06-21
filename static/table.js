@@ -18,7 +18,7 @@ Table = (function(){
     this.startcol = 1;
     this.endcol = 1;
     this.rawdata = data;
-    this.name = "untitled";
+    this.name = "untitled"; 
     // This only works if only table is vertically aligned
     // if (sheetdict !== undefined && sheetdict !== null) {
     //   this.endcol = this.sheet[this.sheetname]['maxcolnum'];
@@ -61,6 +61,7 @@ Table = (function(){
     table['headers'] = [];
     table['data'] = [];
     table['spreadsheet_id'] = spid;
+    table['unique_vals'] = [];
 
     // Yang simpel dulu ya :((((
     datarow = {};
@@ -87,9 +88,11 @@ Table = (function(){
       var header = {};
       header['name'] = row['header'];
       header['type'] = 'VARCHAR';
+      header['unique'] = row['vunique'];
       table['headers'].push(header);
 
       rownum = 0;
+      datas = [];
       for (i$ = datarange[1]; i$ <= datarange[3]; ++i$) {
         if (!(table['data'][rownum] instanceof Array)){
           table['data'][rownum] = [];
@@ -105,8 +108,9 @@ Table = (function(){
           cell.mtype = this.sheet[this.sheetname]['sheetdict'][mergetarget].mtype;
           table['data'][rownum][colnum] = cell.cstr;
         } else {
-          table['data'][rownum][colnum] = cell.cstr
+          table['data'][rownum][colnum] = cell.cstr;
         }
+        datas.push(table['data'][rownum][colnum]);
 
         error = {};
         error['coordinate'] = cellname;
@@ -251,6 +255,17 @@ Table = (function(){
         }
         rownum += 1;
       }
+
+      if (row['vunique']) {
+        if ((new Set(datas)).size !== datas.length) {
+          error['error'] = "unique";
+          error['coordinate'] = row['data'];
+          error['description'] = "`" + row["header"].trim() + "` values is not unique (within sheet)";
+          return error;          
+        }
+        table['unique_vals'] = datas
+      }
+
       colnum += 1
     }
 
@@ -376,6 +391,7 @@ Table = (function(){
       tempobj['vtype'] = 'non';
       tempobj['vrange'] = '';
       tempobj['vrel'] = '';
+      tempobj['vunique'] = false;
       results$.push(this.rows.push(tempobj));
     }
     if (this.range == "") {
@@ -392,7 +408,7 @@ Table = (function(){
     title_div += "<td width=\"50%\" style=\"text-align: right;\"><input type=\"button\" value=\"Save\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\"> <input type=\"button\" onclick=\"window.DeleteTable(" + i + ");\" value=\"Delete\" style=\"font-size:x-small;\">";
     title_div += "<br><br>Data Range <input id=\"t" + i + ".databaseRange\" class=\"btn btn-default btn-xs\" style=\"max-width: 105px\" value=\"" + this.range + "\"></td></tr></table>";
     whole_table += title_div;
-    begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Column</th><th>Type</th><th>Permitted Values</th><th>Relation</th></tr></thead>";
+    begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Column</th><th>Type</th><th>Permitted Values</th><th>Relation</th><th>Unique</th></tr></thead>";
     whole_table += begin_table;
     n = 1;
     for (i$ = 0, len$ = hdata.length; i$ < len$; ++i$) {
@@ -428,7 +444,12 @@ Table = (function(){
       table_datatype = "<td><select id=\"t" + i + ".databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option " + is_non + " value=\"non\">None</option><option " + is_int + " value=\"int\">Integer</option><option " + is_dbl + " value=\"dbl\">Double</option><option " + is_str + " value=\"str\">String</option><option " + is_txt + " value=\"txt\">Text</option><option " + is_bln + " value=\"bln\">Boolean</option></select></td>";
       table_permitted = "<td><input id=\"t" + i + ".databasePermitted." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + decodeURIComponent(hd['vrange']).replace(/"/g, '&quot;') + "\" ></td>";
       table_relations = "<td><input id=\"t" + i + ".databaseRelation." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['vrel'] + "\" style=\"max-width: 105px\"></td>"
-      table_validations = table_datatype + table_permitted + table_relations;
+      
+      checked = ""
+      if (hd['vunique']) { checked = "checked"; }
+      table_isunique = "<td><center><input type=\"checkbox\" id=\"t" + i + ".databaseUnique." + n + "\" class=\"btn btn-default btn-xs\" value=\"\" " + checked + "></center></td>"
+
+      table_validations = table_datatype + table_permitted + table_relations + table_isunique;
       table_end = "</tr>";
       table_per_data = table_start + table_label + table_data + table_validations + table_end;
       whole_table += table_per_data;

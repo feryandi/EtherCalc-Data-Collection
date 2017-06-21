@@ -49,6 +49,7 @@
       var colstring, i, i$, len$, col, sql;
       colstring = '(';
       i = 0;
+      colstring += '`_id` int NOT NULL AUTO_INCREMENT,';
       for (i$ = 0, len$ = columns.length; i$ < len$; ++i$) {
         col = columns[i$];
         if (i > 0) {
@@ -58,15 +59,22 @@
           colstring += '`' + col.name.trim() + '` ' + col.type + '(160)';
         } else if (col.type === "INT") {
           colstring += '`' + col.name.trim() + '` ' + col.type + '(11)';
+        } else if (col.type === "CPKEY") {
+          colstring += 'PRIMARY KEY (' + col.name.trim() + ') ';
+        } else if (col.type === "CUNIQ") {
+          colstring += 'UNIQUE KEY `muniq` (' + col.name.trim() + ') ';
         } else {
           colstring += '`' + col.name.trim() + '` ' + col.type;
         }
         i += 1;
       }
+      colstring += ', PRIMARY KEY (_id)';
       colstring += ')';
       sql = "CREATE TABLE " + table_name + " " + colstring;
       return db.executeSQL(sql, mysqlSetting, function(error, results){
-        return cb(error, results);
+        return db.alterUnique(table_name, columns, mysqlSetting, function(error, results){
+          return cb(error, results);
+        });
       });
     };
     db.isExistTable = function(table_name, mysqlSetting, cb){
@@ -76,9 +84,23 @@
         return cb(error, results);
       });
     };
+    db.getRowCount = function(table_name, mysqlSetting, cb){
+      var sql;
+      sql = "SELECT COUNT(*) FROM " + table_name;
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
+    };
     db.getColumns = function(table_name, mysqlSetting, cb){
       var sql;
       sql = "SHOW COLUMNS FROM " + table_name;
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
+    };
+    db.getUniqueColumns = function(table_name, mysqlSetting, cb){
+      var sql;
+      sql = "SHOW COLUMNS FROM " + table_name + " WHERE `Key` = 'UNI'";
       return db.executeSQL(sql, mysqlSetting, function(error, results){
         return cb(error, results);
       });
@@ -97,9 +119,23 @@
         return cb(error, results);
       });
     };
+    db.selectWhereData = function(table_name, sel_col, where_cond, mysqlSetting, cb){
+      var sql;
+      sql = "SELECT " + sel_col + " FROM " + table_name + " WHERE " + where_cond;
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
+    };
     db.deleteData = function(table_name, con_col, con_val, mysqlSetting, cb){
       var sql;
       sql = "DELETE FROM " + table_name + " WHERE `" + con_col + "` = '" + con_val + "'";
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
+    };
+    db.deleteWhereData = function(table_name, where_cond, mysqlSetting, cb){
+      var sql;
+      sql = "DELETE FROM " + table_name + " WHERE " + where_cond;
       return db.executeSQL(sql, mysqlSetting, function(error, results){
         return cb(error, results);
       });
@@ -148,6 +184,88 @@
         return cb(error, results);
       });
     };
+    db.insertDupData = function(table_name, columns, data, bkey, mysqlSetting, cb){
+      var colstring, i, i$, len$, col, datastring, jd, d, j$, len1$, dt, sql;
+      colstring = '(';
+      i = 0;
+      for (i$ = 0, len$ = columns.length; i$ < len$; ++i$) {
+        col = columns[i$];
+        if (i > 0) {
+          colstring += ', ';
+        }
+        colstring += '`' + col.name.trim() + '`';
+        i += 1;
+      }
+      colstring += ')';
+      datastring = '(';
+      jd = 1;
+      for (i$ = 0, len$ = data.length; i$ < len$; ++i$) {
+        d = data[i$];
+        i = 0;
+        for (j$ = 0, len1$ = d.length; j$ < len1$; ++j$) {
+          dt = d[j$];
+          if (i > 0) {
+            datastring += ', ';
+          }
+          datastring += '"' + db.escapeString(dt) + '"';
+          i += 1;
+        }
+        datastring += ')';
+        if (jd < data.length) {
+          datastring += ', (';
+        }
+        jd += 1;
+      }
+      sql = "INSERT INTO " + table_name + " " + colstring + " VALUES " + datastring + " ON DUPLICATE KEY UPDATE " + bkey + " = VALUES(" + bkey + ")";
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
+    };
+    db.insertDupMultiData = function(table_name, columns, data, mysqlSetting, cb){
+      var assignstring, colstring, i, i$, len$, col, datastring, jd, d, j$, len1$, dt, sql;
+      assignstring = "";
+      colstring = '(';
+      i = 0;
+      for (i$ = 0, len$ = columns.length; i$ < len$; ++i$) {
+        col = columns[i$];
+        if (i > 0) {
+          colstring += ', ';
+          if (!col.unique) {
+            assignstring += ', ';
+          }
+        }
+        colstring += '`' + col.name.trim() + '`';
+        if (!col.unique) {
+          assignstring += '`' + col.name.trim() + '` = VALUES(`' + col.name.trim() + '`)';
+        }
+        i += 1;
+      }
+      colstring += ')';
+      datastring = '(';
+      jd = 1;
+      for (i$ = 0, len$ = data.length; i$ < len$; ++i$) {
+        d = data[i$];
+        i = 0;
+        for (j$ = 0, len1$ = d.length; j$ < len1$; ++j$) {
+          dt = d[j$];
+          if (i > 0) {
+            datastring += ', ';
+          }
+          datastring += '"' + db.escapeString(dt) + '"';
+          i += 1;
+        }
+        datastring += ')';
+        if (jd < data.length) {
+          datastring += ', (';
+        }
+        jd += 1;
+      }
+      sql = "INSERT INTO " + table_name + " " + colstring + " VALUES " + datastring + " ON DUPLICATE KEY UPDATE " + assignstring;
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        console.log(results);
+        return cb(error, results);
+      });
+    };
     db.updateData = function(table_name, columns, data, con_col, con_val, mysqlSetting, cb){
       var colstring, i, i$, len$, col, sql;
       colstring = '';
@@ -163,6 +281,158 @@
       sql = "UPDATE " + table_name + " SET " + colstring + " WHERE " + con_col + " = '" + con_val + "'";
       return db.executeSQL(sql, mysqlSetting, function(error, results){
         return cb(error, results);
+      });
+    };
+    db.updateWhereData = function(table_name, columns, data, wcon, mysqlSetting, cb){
+      var colstring, i, i$, len$, col, sql;
+      colstring = '';
+      i = 0;
+      for (i$ = 0, len$ = columns.length; i$ < len$; ++i$) {
+        col = columns[i$];
+        if (i > 0) {
+          colstring += ", ";
+        }
+        colstring += "`" + col.name.trim() + "`= " + data[i];
+        i += 1;
+      }
+      sql = "UPDATE " + table_name + " SET " + colstring + " WHERE " + wcon;
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
+    };
+    db.alterUnique = function(table_name, columns, mysqlSetting, cb){
+      var colstring, i, i$, len$, col, sql;
+      colstring = '';
+      i = 0;
+      for (i$ = 0, len$ = columns.length; i$ < len$; ++i$) {
+        col = columns[i$];
+        if (col.unique) {
+          if (i > 0) {
+            colstring += ", ";
+          }
+          colstring += "`" + col.name.trim() + "`";
+          i += 1;
+        }
+      }
+      if (colstring !== '') {
+        sql = "ALTER TABLE `" + table_name + "` ADD UNIQUE INDEX `uidx` (" + colstring + ")";
+        return db.executeSQL(sql, mysqlSetting, function(error, results){
+          return cb(error, results);
+        });
+      } else {
+        return cb("OK", "No unique column found");
+      }
+    };
+    db.countColumns = function(table_name, columns, mysqlSetting, cb){
+      var colstring, i, i$, len$, col, sql;
+      colstring = '';
+      i = 0;
+      for (i$ = 0, len$ = columns.length; i$ < len$; ++i$) {
+        col = columns[i$];
+        if (!(col["Key"].toLowerCase() === "uni")) {
+          if (i > 0) {
+            colstring += ", ";
+          }
+          colstring += "COUNT(`" + col["Field"].trim() + "`) AS `" + col["Field"].trim() + "`";
+          i += 1;
+        }
+      }
+      sql = "SELECT " + colstring + " FROM " + table_name;
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
+    };
+    db.getNullColumns = function(table_name, mysqlSetting, cb){
+      return db.getColumns(table_name, mysqlSetting, function(err, colres){
+        return db.countColumns(table_name, colres, mysqlSetting, function(err, res){
+          var nullColumns, result, i$, ref$, len$, col;
+          nullColumns = [];
+          result = res[0];
+          for (i$ = 0, len$ = (ref$ = colres).length; i$ < len$; ++i$) {
+            col = ref$[i$];
+            if (result[col["Field"].trim()] === 0) {
+              nullColumns.push(col["Field"].trim());
+            }
+          }
+          return cb("", nullColumns);
+        });
+      });
+    };
+    db.addColumns = function(table_name, columns, mysqlSetting, cb){
+      var colstring, i, i$, len$, col, sql;
+      colstring = '';
+      i = 0;
+      for (i$ = 0, len$ = columns.length; i$ < len$; ++i$) {
+        col = columns[i$];
+        if (i > 0) {
+          colstring += ", ";
+        }
+        colstring += " ADD COLUMN `" + col.name.trim() + "` ";
+        if (col.type === "VARCHAR") {
+          colstring += col.type + '(160)';
+        } else if (col.type === "INT") {
+          colstring += col.type + '(11)';
+        } else {
+          colstring += col.type;
+        }
+        i += 1;
+      }
+      sql = "ALTER TABLE `" + table_name + "` " + colstring;
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
+    };
+    db.dropColumns = function(table_name, columns, mysqlSetting, cb){
+      var colstring, i, i$, len$, col, sql;
+      colstring = '';
+      i = 0;
+      for (i$ = 0, len$ = columns.length; i$ < len$; ++i$) {
+        col = columns[i$];
+        if (i > 0) {
+          colstring += ", ";
+        }
+        colstring += " DROP COLUMN `" + col.trim() + "`";
+        i += 1;
+      }
+      sql = "ALTER TABLE `" + table_name + "` " + colstring;
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
+    };
+    db.cleanNullRow = function(table_name, with_delete, mysqlSetting, cb){
+      return db.getColumns(table_name, mysqlSetting, function(err, res){
+        var where_cond, i, i$, len$, r;
+        where_cond = "";
+        i = 0;
+        for (i$ = 0, len$ = res.length; i$ < len$; ++i$) {
+          r = res[i$];
+          i += 1;
+          if (r["Field"] !== "_id" && r["Key"].toLowerCase() !== "uni") {
+            where_cond += "`" + r["Field"] + "` is NULL";
+            if (i !== res.length) {
+              where_cond += " AND ";
+            }
+          }
+        }
+        return db.deleteWhereData(table_name, where_cond, mysqlSetting, function(error, results){
+          return db.getRowCount(table_name, mysqlSetting, function(error, results){
+            if (with_delete) {
+              if (results[0]['COUNT(*)'] === 0) {
+                return db.dropTable(table_name, mysqlSetting, function(error, results){
+                  return cb(error, results);
+                });
+              } else {
+                return db.getNullColumns(table_name, mysqlSetting, function(error, results){
+                  return db.dropColumns(table_name, results, mysqlSetting, function(error, results){
+                    return cb(error, results);
+                  });
+                });
+              }
+            } else {
+              return cb(error, results);
+            }
+          });
+        });
       });
     };
     db.escapeString = function(str){

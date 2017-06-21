@@ -129,6 +129,9 @@
       
       e = document.getElementById("t" + n + ".databaseRelation." + i)
       row["vrel"] = e.value
+
+      e = document.getElementById("t" + n + ".databaseUnique." + i)
+      row["vunique"] = e.checked
       i = i + 1
 
     table.rows = rows
@@ -222,26 +225,26 @@
 
           console.log("Collecting Garbage")
           console.log(dbDelete)
+
+          payload =
+            * id: SocialCalc._room
+              db: dbDelete
+              setting: JSON.parse(document.getElementById(spreadsheet.idPrefix + "databaseLoginData").value)
+
+          request =
+            * type: "POST"
+              url: window.location.protocol + "//" + window.location.host + "/_database/clean"
+              contentType: "application/json"
+              data: JSON.stringify payload
+              success: (response) ->
+                console.log(response)
+              error: (response) ->
+                console.log("Error cleaning database")
+                console.log(response)
+          $.ajax request
         catch err
           console.log("Not collecting garbage")
-          console.log(err)
-
-      payload =
-        * id: SocialCalc._room
-          db: dbDelete
-          setting: JSON.parse(document.getElementById(spreadsheet.idPrefix + "databaseLoginData").value)
-
-      request =
-        * type: "POST"
-          url: window.location.protocol + "//" + window.location.host + "/_database/clean"
-          contentType: "application/json"
-          data: JSON.stringify payload
-          success: (response) ->
-            console.log(response)
-          error: (response) ->
-            console.log("Error cleaning database")
-            console.log(response)
-      $.ajax request      
+          console.log(err)     
 
       for t in tables
         i += 1
@@ -268,7 +271,7 @@
               console.log("OK OK OK MYSQL OK OK OK")
               console.log(response)
               if response.code == 1
-                error_box = "<div style=\"background: rgb(255, 210, 202); padding: 5px; border-radius: 3px;\">Cannot override existing table (`" + response.table + "`) with mismatch column</div>"
+                error_box = "<div style=\"background: rgb(255, 210, 202); padding: 5px; border-radius: 3px;\">(`" + response.table + "`) " + response.status + "</div>"
                 errorMsg.innerHTML = error_box
               else
                 lastDB.value = savedData.value

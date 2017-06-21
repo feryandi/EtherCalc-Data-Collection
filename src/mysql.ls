@@ -42,33 +42,49 @@
   db.createTable = (table_name, columns, mysqlSetting, cb) ->
     colstring = '('
     i = 0
+    ## The primary key SQL only works in MySQL!
+    ## Giving id column
+    colstring += '`_id` int NOT NULL AUTO_INCREMENT,'
     for col in columns
       if i > 0
         colstring += ', '
-      ## DISINI HARUSNYA DITANGANIN JUGA JENIS2 VARCHAR, TEXT BERAPA LENGTHNYA DLL 
-      ## YANG INI BARU DEFAULT: VARCHAR
-
       if col.type == "VARCHAR"
         colstring += '`' + col.name.trim! + '` ' + col.type + '(160)'
       else if col.type == "INT" 
         colstring += '`' + col.name.trim! + '` ' + col.type + '(11)'
+      else if col.type == "CPKEY"
+        colstring += 'PRIMARY KEY (' + col.name.trim! + ') '
+      else if col.type == "CUNIQ"
+        colstring += 'UNIQUE KEY `muniq` (' + col.name.trim! + ') '
       else
         colstring += '`' + col.name.trim! + '` ' + col.type
-
       i += 1
+    ## Set id as primary key
+    colstring += ', PRIMARY KEY (_id)'
     colstring += ')'
 
     sql = "CREATE TABLE " + table_name + " " + colstring
     db.executeSQL sql, mysqlSetting, (error, results) ->
-      cb error, results
+      db.alterUnique table_name, columns, mysqlSetting, (error, results) ->
+        cb error, results
 
   db.isExistTable = (table_name, mysqlSetting, cb) ->
     sql = "SHOW TABLES LIKE '" + table_name + "'"
     db.executeSQL sql, mysqlSetting, (error, results) ->
       cb error, results
 
+  db.getRowCount = (table_name, mysqlSetting, cb) ->
+    sql = "SELECT COUNT(*) FROM " + table_name
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results
+
   db.getColumns = (table_name, mysqlSetting, cb) ->
     sql = "SHOW COLUMNS FROM " + table_name
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results  
+
+  db.getUniqueColumns = (table_name, mysqlSetting, cb) ->
+    sql = "SHOW COLUMNS FROM " + table_name + " WHERE `Key` = 'UNI'"
     db.executeSQL sql, mysqlSetting, (error, results) ->
       cb error, results  
 
@@ -82,8 +98,18 @@
     db.executeSQL sql, mysqlSetting, (error, results) ->
       cb error, results
 
+  db.selectWhereData = (table_name, sel_col, where_cond, mysqlSetting, cb) ->
+    sql = "SELECT " + sel_col + " FROM " + table_name + " WHERE " + where_cond
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results
+
   db.deleteData = (table_name, con_col, con_val, mysqlSetting, cb) ->
     sql = "DELETE FROM " + table_name + " WHERE `" + con_col + "` = '" + con_val + "'"
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results
+
+  db.deleteWhereData = (table_name, where_cond, mysqlSetting, cb) ->
+    sql = "DELETE FROM " + table_name + " WHERE " + where_cond
     db.executeSQL sql, mysqlSetting, (error, results) ->
       cb error, results
 
@@ -120,6 +146,68 @@
     db.executeSQL sql, mysqlSetting, (error, results) ->
       cb error, results
 
+  db.insertDupData = (table_name, columns, data, bkey, mysqlSetting, cb) ->
+    colstring = '('
+    i = 0
+    for col in columns
+      if i > 0
+        colstring += ', '
+      colstring += '`' + col.name.trim! + '`'
+      i += 1
+    colstring += ')'
+
+    datastring = '('
+    jd = 1
+    for d in data
+      i = 0
+      for dt in d
+        if i > 0
+          datastring += ', '
+        datastring += '"' + db.escapeString(dt) + '"'
+        i += 1
+      datastring += ')'
+      if jd < data.length
+        datastring += ', ('
+      jd += 1
+
+    sql = "INSERT INTO " + table_name + " " + colstring + " VALUES " + datastring + " ON DUPLICATE KEY UPDATE " + bkey + " = VALUES(" + bkey + ")"
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results
+
+  db.insertDupMultiData = (table_name, columns, data, mysqlSetting, cb) ->
+    assignstring = ""
+    colstring = '('
+    i = 0
+    for col in columns
+      if i > 0
+        colstring += ', '
+        if !(col.unique)
+          assignstring += ', '
+      colstring += '`' + col.name.trim! + '`'
+      if !(col.unique)
+        assignstring += '`' + col.name.trim! + '` = VALUES(`' + col.name.trim! + '`)'
+      i += 1
+    colstring += ')'
+
+    datastring = '('
+    jd = 1
+    for d in data
+      i = 0
+      for dt in d
+        if i > 0
+          datastring += ', '
+        datastring += '"' + db.escapeString(dt) + '"'
+        i += 1
+      datastring += ')'
+      if jd < data.length
+        datastring += ', ('
+      jd += 1
+
+    sql = "INSERT INTO " + table_name + " " + colstring + " VALUES " + datastring + " ON DUPLICATE KEY UPDATE " + assignstring
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      console.log(results)
+      cb error, results
+
   db.updateData = (table_name, columns, data, con_col, con_val, mysqlSetting, cb) ->
     colstring = ''
     i = 0
@@ -132,6 +220,116 @@
     sql = "UPDATE " + table_name + " SET " + colstring + " WHERE " + con_col + " = '" + con_val + "'"
     db.executeSQL sql, mysqlSetting, (error, results) ->
       cb error, results
+
+  db.updateWhereData = (table_name, columns, data, wcon, mysqlSetting, cb) ->
+    # WARNING, THIS INTENTED FOR NULL VALUE
+    colstring = ''
+    i = 0
+    for col in columns
+      if i > 0
+        colstring += ", "
+      colstring += "`" + col.name.trim! + "`= " + data[i]
+      i += 1
+
+    sql = "UPDATE " + table_name + " SET " + colstring + " WHERE " + wcon
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results
+
+  db.alterUnique = (table_name, columns, mysqlSetting, cb) ->
+    colstring = ''
+    i = 0
+    for col in columns
+      if col.unique
+        if i > 0
+          colstring += ", "
+        colstring += "`" + col.name.trim! + "`"
+        i += 1
+
+    if colstring != ''
+      sql = "ALTER TABLE `" + table_name + "` ADD UNIQUE INDEX `uidx` (" + colstring + ")"
+      db.executeSQL sql, mysqlSetting, (error, results) ->
+        cb error, results
+    else
+      cb "OK", "No unique column found"
+
+  db.countColumns = (table_name, columns, mysqlSetting, cb) ->
+    colstring = ''
+    i = 0
+    for col in columns
+      if !(col["Key"].toLowerCase! == "uni")
+        if i > 0
+          colstring += ", "
+        colstring += "COUNT(`" + col["Field"].trim! + "`) AS `" + col["Field"].trim! + "`"
+        i += 1
+
+    sql = "SELECT " + colstring + " FROM " + table_name
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results
+
+  db.getNullColumns = (table_name, mysqlSetting, cb) ->
+    db.getColumns table_name, mysqlSetting, (err, colres) ->
+      db.countColumns table_name, colres, mysqlSetting, (err, res) ->
+        nullColumns = []
+        result = res[0]
+        for col in colres
+          if result[col["Field"].trim!] == 0
+            nullColumns.push(col["Field"].trim!)
+        cb "", nullColumns
+
+  db.addColumns = (table_name, columns, mysqlSetting, cb) ->
+    colstring = ''
+    i = 0
+    for col in columns
+      if i > 0
+        colstring += ", "
+      colstring += " ADD COLUMN `" + col.name.trim! + "` "
+      if col.type == "VARCHAR"
+        colstring += col.type + '(160)'
+      else if col.type == "INT" 
+        colstring += col.type + '(11)'
+      else
+        colstring += col.type
+      i += 1
+
+    sql = "ALTER TABLE `" + table_name + "` " + colstring
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results
+
+  db.dropColumns = (table_name, columns, mysqlSetting, cb) ->
+    colstring = ''
+    i = 0
+    for col in columns
+      if i > 0
+        colstring += ", "
+      colstring += " DROP COLUMN `" + col.trim! + "`"
+      i += 1
+
+    sql = "ALTER TABLE `" + table_name + "` " + colstring
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results
+
+  db.cleanNullRow = (table_name, with_delete, mysqlSetting, cb) ->
+    db.getColumns table_name, mysqlSetting, (err, res) ->
+      where_cond = ""
+      i = 0
+      for r in res
+        i += 1
+        if r["Field"] != "_id" and r["Key"].toLowerCase! != "uni"
+          where_cond += "`" + r["Field"] + "` is NULL"
+          if i != res.length 
+            where_cond += " AND "
+      db.deleteWhereData table_name, where_cond, mysqlSetting, (error, results) ->
+        db.getRowCount table_name, mysqlSetting, (error, results) ->
+          if (with_delete)
+            if (results[0]['COUNT(*)'] == 0)
+              db.dropTable table_name, mysqlSetting, (error, results) ->
+                cb error, results
+            else
+              db.getNullColumns table_name, mysqlSetting, (error, results) ->
+                db.dropColumns table_name, results, mysqlSetting, (error, results) ->
+                  cb error, results
+          else
+            cb error, results
 
   db.escapeString = (str) ->
     return ("" + str).replace /[\0\x08\x09\x1a\n\r"'\\\%]/g, (char) ->

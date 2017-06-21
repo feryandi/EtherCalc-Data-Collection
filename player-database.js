@@ -144,6 +144,8 @@
             row["vrange"] = encodeURIComponent(e.value);
             e = document.getElementById("t" + n + ".databaseRelation." + i);
             row["vrel"] = e.value;
+            e = document.getElementById("t" + n + ".databaseUnique." + i);
+            row["vunique"] = e.checked;
             i = i + 1;
           }
           table.rows = rows;
@@ -195,7 +197,7 @@
           $.ajax(request);
         };
         window.Save = function(){
-          var savedData, lastDB, errorMsg, errCount, sheet, loadsheet, sheetdict, tables, i, dbSaved, dbLast, dbDelete, sd, i$, len$, t, ld, dl, err, payload, request, table, spreadsheet_id, error, ref$, val_type, error_box;
+          var savedData, lastDB, errorMsg, errCount, sheet, loadsheet, sheetdict, tables, i, dbSaved, dbLast, dbDelete, sd, i$, len$, t, ld, dl, payload, request, err, table, spreadsheet_id, error, ref$, val_type, error_box;
           console.log("SAVING TO DATABASE");
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
           lastDB = document.getElementById(spreadsheet.idPrefix + "databaseLastDB");
@@ -232,31 +234,31 @@
                 }
                 console.log("Collecting Garbage");
                 console.log(dbDelete);
+                payload = {
+                  id: SocialCalc._room,
+                  db: dbDelete,
+                  setting: JSON.parse(document.getElementById(spreadsheet.idPrefix + "databaseLoginData").value)
+                };
+                request = {
+                  type: "POST",
+                  url: window.location.protocol + "//" + window.location.host + "/_database/clean",
+                  contentType: "application/json",
+                  data: JSON.stringify(payload),
+                  success: function(response){
+                    return console.log(response);
+                  },
+                  error: function(response){
+                    console.log("Error cleaning database");
+                    return console.log(response);
+                  }
+                };
+                $.ajax(request);
               } catch (e$) {
                 err = e$;
                 console.log("Not collecting garbage");
                 console.log(err);
               }
             }
-            payload = {
-              id: SocialCalc._room,
-              db: dbDelete,
-              setting: JSON.parse(document.getElementById(spreadsheet.idPrefix + "databaseLoginData").value)
-            };
-            request = {
-              type: "POST",
-              url: window.location.protocol + "//" + window.location.host + "/_database/clean",
-              contentType: "application/json",
-              data: JSON.stringify(payload),
-              success: function(response){
-                return console.log(response);
-              },
-              error: function(response){
-                console.log("Error cleaning database");
-                return console.log(response);
-              }
-            };
-            $.ajax(request);
             for (i$ = 0, len$ = tables.length; i$ < len$; ++i$) {
               t = tables[i$];
               i += 1;
@@ -303,7 +305,7 @@
             console.log("OK OK OK MYSQL OK OK OK");
             console.log(response);
             if (response.code === 1) {
-              error_box = "<div style=\"background: rgb(255, 210, 202); padding: 5px; border-radius: 3px;\">Cannot override existing table (`" + response.table + "`) with mismatch column</div>";
+              error_box = "<div style=\"background: rgb(255, 210, 202); padding: 5px; border-radius: 3px;\">(`" + response.table + "`) " + response.status + "</div>";
               return errorMsg.innerHTML = error_box;
             } else {
               lastDB.value = savedData.value;
