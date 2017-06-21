@@ -257,8 +257,12 @@
             if res.length > 0
               ucol = res[0]["Field"]
 
-            index = headers.indexOf ucol 
-            headers.splice index, 1
+            console.log("After UNI")
+            console.log(headers)
+            index = headers.indexOf ucol
+            if index != -1
+              headers.splice index, 1
+            console.log(headers)
 
             headers.forEach (value, index, harray) ->
               ## Condition
@@ -385,15 +389,16 @@
                   same_name = false
                   if header.name.trim! == r["Field"].trim!
                     same_name = true
-                    if header.type == "VARCHAR"
-                      if (r["Type"].toLowerCase() == (header.type + "(160)").toLowerCase())
-                        checked = true
-                    else if header.type == "INT"
-                      if (r["Type"].toLowerCase() == (header.type + "(11)").toLowerCase())
-                        checked = true
-                    else
-                      if (r["Type"].toLowerCase() == (header.type).toLowerCase())
-                        checked = true
+                    checked = true
+                    #if header.type == "VARCHAR"
+                    #  if (r["Type"].toLowerCase() == (header.type + "(160)").toLowerCase())
+                    #    checked = true
+                    #else if header.type == "INT"
+                    #  if (r["Type"].toLowerCase() == (header.type + "(11)").toLowerCase())
+                    #    checked = true
+                    #else
+                    #  if (r["Type"].toLowerCase() == (header.type).toLowerCase())
+                    #    checked = true
                   if same_name and not checked
                     name_not_unique.push(header)
                   if checked
@@ -467,7 +472,6 @@
 
                     else
                       #### ERROR
-                      #this$.message = "Error validating column equality, table contains data from other spreadsheet"
                       this$.message = "Must contain all and same unique column"
                       data =
                         * code: 1
@@ -477,7 +481,6 @@
                       this$.response.json 200 data
                   else
                     #### ERROR
-                    #this$.message = "Error validating column equality, table contains data from other spreadsheet"
                     this$.message = "Cannot append different column on table without unique column"
                     data =
                       * code: 1
@@ -488,7 +491,8 @@
 
                 else
                   #### ERROR
-                  #this$.message = "Error validating column equality, table contains data from other spreadsheet"
+                  ## Disabled for now because make data type validation not working, 
+                  ## and preferable because the database datatype is not the consent here
                   this$.message = "Error contain column that has same name with different data type"
                   data =
                     * code: 1

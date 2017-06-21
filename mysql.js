@@ -55,16 +55,12 @@
         if (i > 0) {
           colstring += ', ';
         }
-        if (col.type === "VARCHAR") {
-          colstring += '`' + col.name.trim() + '` ' + col.type + '(160)';
-        } else if (col.type === "INT") {
-          colstring += '`' + col.name.trim() + '` ' + col.type + '(11)';
-        } else if (col.type === "CPKEY") {
+        if (col.type === "CPKEY") {
           colstring += 'PRIMARY KEY (' + col.name.trim() + ') ';
         } else if (col.type === "CUNIQ") {
           colstring += 'UNIQUE KEY `muniq` (' + col.name.trim() + ') ';
         } else {
-          colstring += '`' + col.name.trim() + '` ' + col.type;
+          colstring += '`' + col.name.trim() + '` ' + col.type + '(160)';
         }
         i += 1;
       }
@@ -162,6 +158,7 @@
       colstring += ')';
       datastring = '(';
       jd = 1;
+      console.log(data);
       for (i$ = 0, len$ = data.length; i$ < len$; ++i$) {
         d = data[i$];
         i = 0;
@@ -222,21 +219,23 @@
       });
     };
     db.insertDupMultiData = function(table_name, columns, data, mysqlSetting, cb){
-      var assignstring, colstring, i, i$, len$, col, datastring, jd, d, j$, len1$, dt, sql;
+      var assignstring, colstring, i, a, i$, len$, col, datastring, jd, d, j$, len1$, dt, sql;
       assignstring = "";
       colstring = '(';
       i = 0;
+      a = 0;
       for (i$ = 0, len$ = columns.length; i$ < len$; ++i$) {
         col = columns[i$];
         if (i > 0) {
           colstring += ', ';
-          if (!col.unique) {
-            assignstring += ', ';
-          }
+        }
+        if (a > 0 && !col.unique) {
+          assignstring += ', ';
         }
         colstring += '`' + col.name.trim() + '`';
         if (!col.unique) {
           assignstring += '`' + col.name.trim() + '` = VALUES(`' + col.name.trim() + '`)';
+          a += 1;
         }
         i += 1;
       }
@@ -368,13 +367,7 @@
           colstring += ", ";
         }
         colstring += " ADD COLUMN `" + col.name.trim() + "` ";
-        if (col.type === "VARCHAR") {
-          colstring += col.type + '(160)';
-        } else if (col.type === "INT") {
-          colstring += col.type + '(11)';
-        } else {
-          colstring += col.type;
-        }
+        colstring += col.type + '(160)';
         i += 1;
       }
       sql = "ALTER TABLE `" + table_name + "` " + colstring;

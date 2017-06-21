@@ -48,16 +48,16 @@
     for col in columns
       if i > 0
         colstring += ', '
-      if col.type == "VARCHAR"
-        colstring += '`' + col.name.trim! + '` ' + col.type + '(160)'
-      else if col.type == "INT" 
-        colstring += '`' + col.name.trim! + '` ' + col.type + '(11)'
-      else if col.type == "CPKEY"
+      #if col.type == "VARCHAR"
+      #  colstring += '`' + col.name.trim! + '` ' + col.type + '(160)'
+      #else if col.type == "INT" 
+      #  colstring += '`' + col.name.trim! + '` ' + col.type + '(11)'
+      if col.type == "CPKEY"
         colstring += 'PRIMARY KEY (' + col.name.trim! + ') '
       else if col.type == "CUNIQ"
         colstring += 'UNIQUE KEY `muniq` (' + col.name.trim! + ') '
       else
-        colstring += '`' + col.name.trim! + '` ' + col.type
+        colstring += '`' + col.name.trim! + '` ' + col.type + '(160)'
       i += 1
     ## Set id as primary key
     colstring += ', PRIMARY KEY (_id)'
@@ -130,6 +130,7 @@
 
     datastring = '('
     jd = 1
+    console.log(data)
     for d in data
       i = 0
       for dt in d
@@ -178,14 +179,16 @@
     assignstring = ""
     colstring = '('
     i = 0
+    a = 0
     for col in columns
       if i > 0
         colstring += ', '
-        if !(col.unique)
-          assignstring += ', '
+      if a > 0 and !(col.unique)
+        assignstring += ', '
       colstring += '`' + col.name.trim! + '`'
       if !(col.unique)
         assignstring += '`' + col.name.trim! + '` = VALUES(`' + col.name.trim! + '`)'
+        a += 1
       i += 1
     colstring += ')'
 
@@ -283,12 +286,12 @@
       if i > 0
         colstring += ", "
       colstring += " ADD COLUMN `" + col.name.trim! + "` "
-      if col.type == "VARCHAR"
-        colstring += col.type + '(160)'
-      else if col.type == "INT" 
-        colstring += col.type + '(11)'
-      else
-        colstring += col.type
+      #if col.type == "VARCHAR"
+      #  colstring += col.type + '(160)'
+      #else if col.type == "INT" 
+      #  colstring += col.type + '(11)'
+      #else
+      colstring += col.type + '(160)'
       i += 1
 
     sql = "ALTER TABLE `" + table_name + "` " + colstring

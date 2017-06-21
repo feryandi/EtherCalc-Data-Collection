@@ -17,6 +17,7 @@ Table = (function(){
     this.data = [];
     this.startcol = 1;
     this.endcol = 1;
+    this.affectedcol = [];
     this.rawdata = data;
     this.name = "untitled"; 
     // This only works if only table is vertically aligned
@@ -66,39 +67,28 @@ Table = (function(){
     // Yang simpel dulu ya :((((
     datarow = {};
 
-    datarange = this.RangeComponent(this.range)
-
     var header = {};
-    header['name'] = "_spreadsheet_id";
-    header['type'] = 'VARCHAR';
-    table['headers'].push(header);
-
-    rownum = 0;
-    for (i$ = datarange[1]; i$ <= datarange[3]; ++i$) {
-      if (!(table['data'][rownum] instanceof Array)){
-        table['data'][rownum] = [];
-      }
-      table['data'][rownum][0] = spid;
-      rownum += 1;
-    }
 
     // Getting all the data CELLS that used
-    colnum = 1;
+    colnum = 0;
+    header_names = [];
     for (row of this.rows) {
       var header = {};
       header['name'] = row['header'];
+      header_names.push(header['name']);
       header['type'] = 'VARCHAR';
       header['unique'] = row['vunique'];
       table['headers'].push(header);
 
       rownum = 0;
       datas = [];
-      for (i$ = datarange[1]; i$ <= datarange[3]; ++i$) {
+      for (i$ = 0; i$ < this.data.length; ++i$) {
         if (!(table['data'][rownum] instanceof Array)){
           table['data'][rownum] = [];
         }
-        cellname = '' + row['data'] + i$;
+        cellname = '' + row['data'] + this.data[i$];
         cell = this.sheet[this.sheetname]['sheetdict'][cellname];
+        //console.log(cellname);
 
         // DATA MERGE AND DATA CONTENT
         mergemap = this.sheet[this.sheetname]['mergemap'];
@@ -116,7 +106,6 @@ Table = (function(){
         error['coordinate'] = cellname;
 
         // DATA TYPE IN DATABASE
-        console.log(">>" + row['vtype'])
         if (row['vtype'] == "int") {
           header['type'] = 'INT';
         } else if (row['vtype'] == "dbl") {
@@ -269,6 +258,13 @@ Table = (function(){
       colnum += 1
     }
 
+    if ((new Set(header_names)).size !== header_names.length) {
+      error['error'] = "label";
+      error['coordinate'] = 'table';
+      error['description'] = "Label name should be unique";
+      return error;          
+    }
+
     console.log(table);
     //
     //////////////////////////////////////////////////////////////////////
@@ -280,6 +276,10 @@ Table = (function(){
   Table.prototype.SetColumnRange = function(startcol, endcol){
     this.startcol = startcol;
     this.endcol = endcol;
+    this.affectedcol = []
+    for (i = this.startcol; i <= this.endcol; i++) {
+      this.affectedcol.push(i); 
+    }
     if (this.rawdata !== undefined && this.rawdata !== null) {
       this.ParseData(this.rawdata);
     }
@@ -296,6 +296,7 @@ Table = (function(){
     data['data'] = this.data;
     data['startcol'] = this.startcol;
     data['endcol'] = this.endcol;
+    data['affectedcol'] = this.affectedcol;
     data['rows'] = this.rows;
     data['range'] = this.range;
     data['name'] = this.name;
@@ -313,6 +314,7 @@ Table = (function(){
     this.range = data['range'];
     this.startcol = data['startcol'];
     this.endcol = data['endcol'];
+    this.affectedcol = data['affectedcol'];
     this.rows = data['rows'];
     this.name = data['name'];
     //console.log(this.rows);
@@ -364,15 +366,22 @@ Table = (function(){
     this.rows = [];
 
     if (this.range && this.range.length <= 10 && !this.startcol && !this.endcol) {
-      temp = this.RangeComponent(String(this.range));
-      console.log(temp);
-      this.startcol = temp[0];
-      this.endcol = temp[2];
+      try {
+        this.affectedcol = JSON.parse(this.range);
+      } catch (e$) {
+        temp = this.RangeComponent(String(this.range));
+        this.startcol = temp[0];
+        this.endcol = temp[2];
+        this.affectedcol = []
+        for (i = this.startcol; i <= this.endcol; i++) {
+          this.affectedcol.push(i); 
+        }
+      }
     }
 
     // Yang di for itu kolom karena dengan asumsi bahwa tabelnya headernya horizontal
-    for (i$ = this.startcol, to$ = this.endcol; i$ <= to$; ++i$) {
-      col = i$;
+    for (i$ = 0, to$ = this.affectedcol.length; i$ < to$; ++i$) {
+      col = this.affectedcol[i$];
       tempobj = {};
       tempobj['header'] = "";
       for (j$ = 0, len$ = (ref$ = this.header).length; j$ < len$; ++j$) {
@@ -381,12 +390,26 @@ Table = (function(){
         mergemap = this.sheet[this.sheetname]['mergemap'];
         mergetarget = mergemap[SocialCalc.rcColname(col) + h];
         if (mergetarget) {
-          tempobj['header'] += this.sheet[this.sheetname]['sheetdict'][mergetarget].cstr + " ";
+          mcstr = this.sheet[this.sheetname]['sheetdict'][mergetarget].cstr;
+          console.log(tempobj['header']);
+          console.log(mcstr);
+          if (tempobj["header"].trim() != mcstr.trim()) {
+            tempobj['header'] += mcstr + " ";
+          }
         }
         if (hcell) {
-          tempobj['header'] += hcell.cstr + " ";
+          console.log(tempobj['header']);
+          console.log(hcell.cstr)
+          try {
+            if (tempobj['header'].trim() != hcell.cstr.trim()) {
+              tempobj['header'] += hcell.cstr + " ";
+            }
+          } catch (e) {
+            tempobj['header'] += hcell.cstr + " ";
+          }
         }
       }
+      tempobj['header'] = tempobj['header'].trim();
       tempobj['data'] = SocialCalc.rcColname(col);
       tempobj['vtype'] = 'non';
       tempobj['vrange'] = '';
@@ -406,7 +429,7 @@ Table = (function(){
     whole_table = "";
     title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><table style=\"padding-top: 15px;padding-bottom: 15px; padding-left:20px; padding-right:20px; width:100%;\"><tr><td width=\"50%\">" + "<strong>Table " + i + "</strong><br><br>Name <input id=\"t" + i + ".databaseName\" class=\"btn btn-default btn-xs\" type=\"text\" value=\"" + this.name + "\"></td>";
     title_div += "<td width=\"50%\" style=\"text-align: right;\"><input type=\"button\" value=\"Save\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\"> <input type=\"button\" onclick=\"window.DeleteTable(" + i + ");\" value=\"Delete\" style=\"font-size:x-small;\">";
-    title_div += "<br><br>Data Range <input id=\"t" + i + ".databaseRange\" class=\"btn btn-default btn-xs\" style=\"max-width: 105px\" value=\"" + this.range + "\"></td></tr></table>";
+    title_div += "<br><br>Data Range <input id=\"t" + i + ".databaseRange\" class=\"btn btn-default btn-xs\" style=\"max-width: 105px\" value=\"" + this.range + "\" disabled></td></tr></table>";
     whole_table += title_div;
     begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Column</th><th>Type</th><th>Permitted Values</th><th>Relation</th><th>Unique</th></tr></thead>";
     whole_table += begin_table;
@@ -441,13 +464,13 @@ Table = (function(){
       case 'bln':
         is_bln = 'selected';
       }
-      table_datatype = "<td><select id=\"t" + i + ".databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option " + is_non + " value=\"non\">None</option><option " + is_int + " value=\"int\">Integer</option><option " + is_dbl + " value=\"dbl\">Double</option><option " + is_str + " value=\"str\">String</option><option " + is_txt + " value=\"txt\">Text</option><option " + is_bln + " value=\"bln\">Boolean</option></select></td>";
+      table_datatype = "<td><select id=\"t" + i + ".databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option " + is_non + " value=\"non\">None</option><option " + is_int + " value=\"int\">Integer</option><option " + is_dbl + " value=\"dbl\">Double</option><option " + is_str + " value=\"str\">String</option><option " + is_bln + " value=\"bln\">Boolean</option></select></td>";
       table_permitted = "<td><input id=\"t" + i + ".databasePermitted." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + decodeURIComponent(hd['vrange']).replace(/"/g, '&quot;') + "\" ></td>";
       table_relations = "<td><input id=\"t" + i + ".databaseRelation." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['vrel'] + "\" style=\"max-width: 105px\"></td>"
       
       checked = ""
       if (hd['vunique']) { checked = "checked"; }
-      table_isunique = "<td><center><input type=\"checkbox\" id=\"t" + i + ".databaseUnique." + n + "\" class=\"btn btn-default btn-xs\" value=\"\" " + checked + "></center></td>"
+      table_isunique = "<td><center><input type=\"checkbox\" id=\"t" + i + ".databaseUnique." + n + "\" class=\"btn btn-default btn-xs\" onclick=\"window.UniqueCheck(" + i + ", " + n + ");\" value=\"\" " + checked + "></center></td>"
 
       table_validations = table_datatype + table_permitted + table_relations + table_isunique;
       table_end = "</tr>";

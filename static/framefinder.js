@@ -768,8 +768,12 @@ LoadSheet = (function(){
         //console.log("Cell Coord: [" + curX + ", "+ curY + "]")
 
         cellName = rcColname(colnum) + rownum;
+
         cell = this.wb.sheet.GetAssuredCell(cellName);
         cellType = this.GetValueType(cell.valuetype);
+
+        // console.log(cell)
+
         if (cellType > 0 || cellType < 5) {
           cStr = cell.datavalue;
           cellDType = this.GetDataType(cell.datatype, cStr);
@@ -844,6 +848,7 @@ LoadSheet = (function(){
     dtype = null;
     switch (type) {
     case 't':
+    case 'f':
       dtype = 'str';
       break;
     case 'v':

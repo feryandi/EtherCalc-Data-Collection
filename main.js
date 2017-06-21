@@ -376,8 +376,13 @@
               if (res.length > 0) {
                 ucol = res[0]["Field"];
               }
+              console.log("After UNI");
+              console.log(headers);
               index = headers.indexOf(ucol);
-              headers.splice(index, 1);
+              if (index !== -1) {
+                headers.splice(index, 1);
+              }
+              console.log(headers);
               return headers.forEach(function(value, index, harray){
                 var wcon, i, i$, ref$, len$, id;
                 wcon = "";
@@ -574,19 +579,7 @@
                       same_name = false;
                       if (header.name.trim() === r["Field"].trim()) {
                         same_name = true;
-                        if (header.type === "VARCHAR") {
-                          if (r["Type"].toLowerCase() === (header.type + "(160)").toLowerCase()) {
-                            checked = true;
-                          }
-                        } else if (header.type === "INT") {
-                          if (r["Type"].toLowerCase() === (header.type + "(11)").toLowerCase()) {
-                            checked = true;
-                          }
-                        } else {
-                          if (r["Type"].toLowerCase() === header.type.toLowerCase()) {
-                            checked = true;
-                          }
-                        }
+                        checked = true;
                       }
                       if (same_name && !checked) {
                         name_not_unique.push(header);

@@ -16,11 +16,19 @@
   notest_div = "<div style=\"width: 100%; height: 100%; background-color: rgb(224,224,224); color: rgb(55,55,55);\"><div style=\"padding: 15px\"><span style=\"font-size: 18px;\"><b>Cannot Established Connection to Database</b></span><br/>Please check if your database is able to be connected by outside application.<br/><br/>Or, input other database setting and<br/>click 'Connect' button.</div></div>"
   plwait_div = "<div style=\"width: 100%; height: 100%; background-color: rgb(224,224,224); color: rgb(55,55,55);\"><div style=\"padding: 15px\"><span style=\"font-size: 18px;\"><b>Please Wait...</b></span><br/>Trying to establish connection with database.</div></div>"
 
+  window.UniqueCheck = (i, n) ->
+    is_checked = $("[id=t" + i + "\\.databaseUnique\\." + n + "]").prop('checked')
+    console.log(is_checked)
+    $("[id^=t" + i + "\\.databaseUnique]").prop('checked', false)
+    $("[id=t" + i + "\\.databaseUnique\\." + n + "]").prop('checked', (is_checked))
+
   window.RefreshView = ->
     sheet = SocialCalc.GetSpreadsheetControlObject!
     gview = sheet.views.database.element
     content_div = content_div_s
     savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
+    errorMsg = document.getElementById(spreadsheet.idPrefix + "databaseErrorMsg")
+    errorMsg.innerHTML = ""
     if savedData.value != null && savedData.value != ""
       sd = JSON.parse(savedData.value)
       i = 1
@@ -113,7 +121,6 @@
     table.Deserialize JSON.stringify(sd[parseInt(n)-1])
 
     rows = table.rows
-    table.range = document.getElementById("t" + n + ".databaseRange").value
     table.name = document.getElementById("t" + n + ".databaseName").value
 
     i = 1
@@ -133,11 +140,10 @@
       e = document.getElementById("t" + n + ".databaseUnique." + i)
       row["vunique"] = e.checked
       i = i + 1
-
     table.rows = rows
-    console.log(sd)
+
     sd[parseInt(n)-1] = JSON.parse(table.Serialize!)
-    console.log(sd)
+
     savedData.value = JSON.stringify(sd)
     window.SaveState!
 
@@ -287,7 +293,7 @@
           console.log("ERROR VALIDATIONS")
           console.log(payload.table)
           val_type = payload.table.error.charAt(0).toUpperCase() + payload.table.error.slice(1)
-          error_box = "<div style=\"background: rgb(255, 210, 202); padding: 5px; border-radius: 3px;\">" + val_type + " validation error on cell " + payload.table.coordinate + "</div>"
+          error_box = "<div style=\"background: rgb(255, 210, 202); padding: 5px; border-radius: 3px;\">" + val_type + " validation error on cell " + payload.table.coordinate + ". " + payload.table.description + "</div>"
           errorMsg.innerHTML = error_box
 
       if errCount == 0        
@@ -404,12 +410,14 @@
       return
 
     patt = new RegExp("([A-Z]+)([0-9]+):([A-Z]+)([0-9]+)", "g");
-    if !patt.test(md['range']) or md['range'] == ""
+    if (!((md['range'] instanceof Array) or (patt.test(md['range']))) or (md['range'] == ""))
       console.log("Error - range not valid")
       errorMsg.innerHTML = error_box_s + "Error parsing, range not valid format" + error_box_e
-      return      
+      return
+    if (md['range'] instanceof Array)
+      md['range'] = JSON.stringify(md['range'])
 
-    ## Completing the missing values using Table  
+    ## Completing the missing values using Table
     table = new Table sheetdict, null
     table.Deserialize JSON.stringify(md)
     table.MapHeaderData!
