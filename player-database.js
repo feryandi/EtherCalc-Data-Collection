@@ -141,6 +141,7 @@
           table.Deserialize(JSON.stringify(sd[parseInt(n) - 1]));
           rows = table.rows;
           table.name = document.getElementById("t" + n + ".databaseName").value;
+          table.data = document.getElementById("t" + n + ".databaseRange").value;
           i = 1;
           for (i$ = 0, len$ = rows.length; i$ < len$; ++i$) {
             row = rows[i$];
@@ -151,7 +152,7 @@
             e = document.getElementById("t" + n + ".databasePermitted." + i);
             row["vrange"] = encodeURIComponent(e.value);
             e = document.getElementById("t" + n + ".databaseRelation." + i);
-            row["vrel"] = e.value;
+            row["vrel"] = encodeURIComponent(e.value);
             e = document.getElementById("t" + n + ".databaseUnique." + i);
             row["vunique"] = e.checked;
             i = i + 1;
@@ -418,9 +419,10 @@
             errorMsg.innerHTML = error_box_s + "Error parsing, data not found" + error_box_e;
             return;
           }
-          if (!(md['data'] instanceof Array)) {
+          patt = new RegExp("([0-9]+):([0-9]+)", "g");
+          if (!(md['data'] instanceof Array || patt.test(md['data'])) || md['data'] === "") {
             console.log("Error - data not valid JSON Array");
-            errorMsg.innerHTML = error_box_s + "Error parsing, data not valid JSON Array" + error_box_e;
+            errorMsg.innerHTML = error_box_s + "Error parsing, data not valid format" + error_box_e;
             return;
           }
           if (!md.hasOwnProperty('range')) {

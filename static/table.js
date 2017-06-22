@@ -14,10 +14,14 @@ Table = (function(){
     this.title = [];
     this.footnote = [];
     this.header = [];
+    
     this.data = [];
+    this.datarow = [];
+
     this.startcol = 1;
     this.endcol = 1;
     this.affectedcol = [];
+    
     this.rawdata = data;
     this.name = "untitled"; 
     // This only works if only table is vertically aligned
@@ -47,6 +51,8 @@ Table = (function(){
           this.header.push(parseInt(row.row) + 1);
         } else if (row.type === "Data") {
           this.data.push(parseInt(row.row) + 1);
+          this.datarow.push(parseInt(row.row) + 1);
+          this.data = JSON.stringify(this.data);
         }
       }
     }
@@ -55,19 +61,13 @@ Table = (function(){
   Table.prototype.TupleSerializeWithChecker = function(spid){    
     ///////////////////////////////////////////////////////////////////
     // Tuples for databases
-    // Sekarang 1 Tabel dulu yah :(
     table = {};
-    // table['name'] = tablename;
     table['name'] = this.name;
     table['headers'] = [];
     table['data'] = [];
     table['spreadsheet_id'] = spid;
     table['unique_vals'] = [];
-
-    // Yang simpel dulu ya :((((
-    datarow = {};
-
-    var header = {};
+    table['db_relations'] = [];
 
     // Getting all the data CELLS that used
     colnum = 0;
@@ -82,13 +82,13 @@ Table = (function(){
 
       rownum = 0;
       datas = [];
-      for (i$ = 0; i$ < this.data.length; ++i$) {
+      
+      for (i$ = 0; i$ < this.datarow.length; ++i$) {
         if (!(table['data'][rownum] instanceof Array)){
           table['data'][rownum] = [];
         }
-        cellname = '' + row['data'] + this.data[i$];
+        cellname = '' + row['data'] + this.datarow[i$];
         cell = this.sheet[this.sheetname]['sheetdict'][cellname];
-        //console.log(cellname);
 
         // DATA MERGE AND DATA CONTENT
         mergemap = this.sheet[this.sheetname]['mergemap'];
@@ -155,7 +155,9 @@ Table = (function(){
         // EX: 100-2100 OR 10.5-1000
           values = therange.split("-");
           if (values[0] > values[1]) {
-            // INVALID: ERROR
+            error['description'] = "The between rule is not right";
+            console.log(error);
+            return error;
           } else {
             num = parseInt(cell.cstr.toString());
             // TO-DO: Check NaN
@@ -221,10 +223,15 @@ Table = (function(){
         // DATA RELATION CHECKER, kayanya bukan disini sih harusnya soalnya ngecek antar tabel
         // row['vrel']
         relValid = false;
+        therel = decodeURIComponent(row['vrel']);
         error['error'] = "relation";
-        if (row['vrel'].split(":").length == 2) {
+
+        if ((therel.charAt(0) == "[") && (therel.charAt(therel.length - 1) == "]")) {
+          relValid = true; // Do Nothing
+
+        } else if (therel.split(":").length == 2) {
           content = table['data'][rownum][colnum];
-          relRange = this.RangeComponent(row['vrel']);
+          relRange = this.RangeComponent(therel);
 
           for (r = relRange[1]; r <= relRange[3]; r++) {
             for (c = relRange[0]; c <= relRange[2]; c++) {
@@ -239,12 +246,13 @@ Table = (function(){
         }
 
         if (!relValid) {          
-          error['description'] = "Relation not detected";
+          error['description'] = "Unrelated value detected";
           return error;
         }
         rownum += 1;
       }
 
+      // Check unique-ness of data
       if (row['vunique']) {
         if ((new Set(datas)).size !== datas.length) {
           error['error'] = "unique";
@@ -255,9 +263,22 @@ Table = (function(){
         table['unique_vals'] = datas
       }
 
+      // Database based relation check
+      therel = decodeURIComponent(row['vrel']);
+      if ((therel.charAt(0) == "[") && (therel.charAt(therel.length - 1) == "]")) {
+        reldb = JSON.parse(therel)
+        relcheck = {}
+        relcheck["target"] = reldb[0];
+        relcheck["column"] = reldb[1];
+        relcheck["data"] = datas;
+        relcheck["num"] = colnum;
+        table['db_relations'].push(relcheck);
+      }
+
       colnum += 1
     }
 
+    // Check unique-ness of the label
     if ((new Set(header_names)).size !== header_names.length) {
       error['error'] = "label";
       error['coordinate'] = 'table';
@@ -285,7 +306,7 @@ Table = (function(){
     }
   };
   Table.prototype.IsHasData = function(){
-    return this.data.length > 0;
+    return this.datarow.length > 0;
   };
   Table.prototype.Serialize = function(){
     var data, table, datarow;
@@ -310,7 +331,24 @@ Table = (function(){
     this.title = data['title'];
     this.footnote = data['footnote'];
     this.header = data['header'];
+
+    // KAYANYA DISINI AJA? MUNGKIN PERLU PAS SERIALIZE?
     this.data = data['data'];
+    if (this.data instanceof Array) {
+      this.datarow = this.data;
+      this.data = JSON.stringify(this.data);
+    } else {
+      try {
+        this.data = JSON.parse(this.data);
+        this.datarow = this.data;
+      } catch (e) {
+        r = this.data.split(":");
+        for (i = parseInt(r[0]); i <= parseInt(r[1]); i++) {
+          this.datarow.push(i);
+        }        
+      }
+    }
+
     this.range = data['range'];
     this.startcol = data['startcol'];
     this.endcol = data['endcol'];
@@ -356,8 +394,8 @@ Table = (function(){
   };
   Table.prototype.GetDataRange = function(mincol, maxcol){
     var minval, maxval;
-    minval = Math.min.apply(Math, this.data);
-    maxval = Math.max.apply(Math, this.data);
+    minval = Math.min.apply(Math, this.datarow);
+    maxval = Math.max.apply(Math, this.datarow);
     // Super simple.... for now :'(
     return SocialCalc.rcColname(mincol) + minval + ":" + SocialCalc.rcColname(maxcol) + maxval;
   };
@@ -391,15 +429,11 @@ Table = (function(){
         mergetarget = mergemap[SocialCalc.rcColname(col) + h];
         if (mergetarget) {
           mcstr = this.sheet[this.sheetname]['sheetdict'][mergetarget].cstr;
-          console.log(tempobj['header']);
-          console.log(mcstr);
           if (tempobj["header"].trim() != mcstr.trim()) {
             tempobj['header'] += mcstr + " ";
           }
         }
         if (hcell) {
-          console.log(tempobj['header']);
-          console.log(hcell.cstr)
           try {
             if (tempobj['header'].trim() != hcell.cstr.trim()) {
               tempobj['header'] += hcell.cstr + " ";
@@ -429,7 +463,7 @@ Table = (function(){
     whole_table = "";
     title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><table style=\"padding-top: 15px;padding-bottom: 15px; padding-left:20px; padding-right:20px; width:100%;\"><tr><td width=\"50%\">" + "<strong>Table " + i + "</strong><br><br>Name <input id=\"t" + i + ".databaseName\" class=\"btn btn-default btn-xs\" type=\"text\" value=\"" + this.name + "\"></td>";
     title_div += "<td width=\"50%\" style=\"text-align: right;\"><input type=\"button\" value=\"Save\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\"> <input type=\"button\" onclick=\"window.DeleteTable(" + i + ");\" value=\"Delete\" style=\"font-size:x-small;\">";
-    title_div += "<br><br>Data Range <input id=\"t" + i + ".databaseRange\" class=\"btn btn-default btn-xs\" style=\"max-width: 105px\" value=\"" + this.range + "\" disabled></td></tr></table>";
+    title_div += "<br><br>Data Row <input id=\"t" + i + ".databaseRange\" class=\"btn btn-default btn-xs\" style=\"max-width: 105px\" value=\"" + this.data + "\"></td></tr></table>";
     whole_table += title_div;
     begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Column</th><th>Type</th><th>Permitted Values</th><th>Relation</th><th>Unique</th></tr></thead>";
     whole_table += begin_table;
@@ -466,7 +500,7 @@ Table = (function(){
       }
       table_datatype = "<td><select id=\"t" + i + ".databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option " + is_non + " value=\"non\">None</option><option " + is_int + " value=\"int\">Integer</option><option " + is_dbl + " value=\"dbl\">Double</option><option " + is_str + " value=\"str\">String</option><option " + is_bln + " value=\"bln\">Boolean</option></select></td>";
       table_permitted = "<td><input id=\"t" + i + ".databasePermitted." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + decodeURIComponent(hd['vrange']).replace(/"/g, '&quot;') + "\" ></td>";
-      table_relations = "<td><input id=\"t" + i + ".databaseRelation." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['vrel'] + "\" style=\"max-width: 105px\"></td>"
+      table_relations = "<td><input id=\"t" + i + ".databaseRelation." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + decodeURIComponent(hd['vrel']).replace(/"/g, '&quot;') + "\" style=\"max-width: 105px\"></td>"
       
       checked = ""
       if (hd['vunique']) { checked = "checked"; }

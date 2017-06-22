@@ -122,6 +122,7 @@
 
     rows = table.rows
     table.name = document.getElementById("t" + n + ".databaseName").value
+    table.data = document.getElementById("t" + n + ".databaseRange").value
 
     i = 1
     for row in rows
@@ -135,7 +136,7 @@
       row["vrange"] = encodeURIComponent(e.value)
       
       e = document.getElementById("t" + n + ".databaseRelation." + i)
-      row["vrel"] = e.value
+      row["vrel"] = encodeURIComponent(e.value)
 
       e = document.getElementById("t" + n + ".databaseUnique." + i)
       row["vunique"] = e.checked
@@ -398,9 +399,10 @@
       errorMsg.innerHTML = error_box_s + "Error parsing, data not found" + error_box_e
       return
 
-    if not (md['data'] instanceof Array)
+    patt = new RegExp("([0-9]+):([0-9]+)", "g");
+    if (!((md['data'] instanceof Array) or (patt.test(md['data']))) or (md['data'] == ""))
       console.log("Error - data not valid JSON Array")
-      errorMsg.innerHTML = error_box_s + "Error parsing, data not valid JSON Array" + error_box_e
+      errorMsg.innerHTML = error_box_s + "Error parsing, data not valid format" + error_box_e
       return
 
     ## Check for range

@@ -2,7 +2,7 @@
 (function(){
   var join$ = [].join;
   this.include = function(){
-    var Table, FrameFinder, clusterfck, fs, J, csvParse, DB, SC, MYSQL, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, RealBin, DevMode, dataDir, sendFile, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, dbCleanup, writeLog, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
+    var Table, FrameFinder, clusterfck, fs, J, csvParse, DB, SC, MYSQL, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, RealBin, DevMode, dataDir, sendFile, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, dbCleanup, writeLog, isRelationValid, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
     this.use('json', this.app.router, this.express['static'](__dirname));
     this.app.use('/edit', this.express['static'](__dirname));
     this.app.use('/view', this.express['static'](__dirname));
@@ -438,9 +438,6 @@
     });
     writeLog = function(start, affected, unique_vals, table, mysqlSetting, cb){
       var db_log_name, db_log_columns_c, data, i$, to$, i, j$, ref$, len$, col, d, uv, len1$;
-      console.log("WRITE LOG");
-      console.log(start);
-      console.log(affected);
       db_log_name = "s_database_wlog";
       db_log_columns_c = [
         {
@@ -480,6 +477,36 @@
       return MYSQL.insertDupData(db_log_name, db_log_columns_c, data, "s_id", mysqlSetting, function(err, res){
         return cb(err, res);
       });
+    };
+    isRelationValid = function(table, mysqlSetting, cb){
+      var validated, num, info;
+      console.log("DB Relation Check");
+      validated = 0;
+      num = -1;
+      info = "No info";
+      if (table.db_relations.length > 0) {
+        return table.db_relations.forEach(function(value, index, harray){
+          return MYSQL.checkRelation(value.target, value.column, value.data, mysqlSetting, function(err, res, hvalid, hinfo){
+            var valid, num;
+            valid = true;
+            validated += 1;
+            if (!hvalid) {
+              valid = false;
+              return cb(valid, num, hinfo);
+            } else {
+              if (res[0]["COUNT"] !== new Set(value.data).size) {
+                valid = false;
+                num = value.num;
+              }
+              if (validated === harray.length || !valid) {
+                return cb(valid, num, "Relation not found on database");
+              }
+            }
+          });
+        });
+      } else {
+        return cb(valid, num, info);
+      }
     };
     this.post({
       '/_database/create': function(){
@@ -532,137 +559,160 @@
               return console.log(res);
             });
           }
-          return MYSQL.isExistTable(table.name, mysqlSetting, function(err, results){
-            var wcon;
-            if (results.length <= 0) {
-              return MYSQL.createTable(table.name, table.headers, mysqlSetting, function(err, res){
-                return MYSQL.insertData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
-                  return writeLog(res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, function(err, res){
-                    var data;
-                    console.log(res);
-                    data = {
-                      code: 0,
-                      status: this$.message
-                    };
-                    this$.response.type('application/json');
-                    return this$.response.json(200, data);
+          return isRelationValid(table, mysqlSetting, function(valid, num, info){
+            var data;
+            if (valid) {
+              return MYSQL.isExistTable(table.name, mysqlSetting, function(err, results){
+                var wcon;
+                if (results.length <= 0) {
+                  return MYSQL.createTable(table.name, table.headers, mysqlSetting, function(err, res){
+                    return MYSQL.insertData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
+                      return writeLog(res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, function(err, res){
+                        var data;
+                        console.log(res);
+                        data = {
+                          code: 0,
+                          status: this$.message
+                        };
+                        this$.response.type('application/json');
+                        return this$.response.json(200, data);
+                      });
+                    });
                   });
-                });
-              });
-            } else {
-              console.log("Table exists, where all broken and im tired");
-              wcon = "`s_id` != '" + table.spreadsheet_id + "'";
-              return MYSQL.selectWhereData(db_log_name, "`_id`", wcon, mysqlSetting, function(err, res){
-                if (res.length > 0) {
-                  this$.is_there_other = true;
-                }
-                return MYSQL.getColumns(table.name, mysqlSetting, function(err, res){
-                  var colmatch, unqmatch, unqtotal, notmatch, name_not_unique, i$, len$, r, ref$, header, checked, j$, len1$, same_name, data;
-                  console.log("xoxo Checking Column Eq oxox");
-                  console.log(res);
-                  colmatch = [];
-                  unqmatch = [];
-                  unqtotal = 0;
-                  notmatch = [];
-                  name_not_unique = [];
-                  for (i$ = 0, len$ = res.length; i$ < len$; ++i$) {
-                    r = res[i$];
-                    if (r["Key"].toLowerCase() === "uni") {
-                      unqtotal += 1;
+                } else {
+                  console.log("Table exists, where all broken and im tired");
+                  wcon = "`s_id` != '" + table.spreadsheet_id + "'";
+                  return MYSQL.selectWhereData(db_log_name, "`_id`", wcon, mysqlSetting, function(err, res){
+                    if (res.length > 0) {
+                      this$.is_there_other = true;
                     }
-                  }
-                  for (i$ = 0, len$ = (ref$ = table.headers).length; i$ < len$; ++i$) {
-                    header = ref$[i$];
-                    checked = false;
-                    for (j$ = 0, len1$ = res.length; j$ < len1$; ++j$) {
-                      r = res[j$];
-                      same_name = false;
-                      if (header.name.trim() === r["Field"].trim()) {
-                        same_name = true;
-                        checked = true;
+                    return MYSQL.getColumns(table.name, mysqlSetting, function(err, res){
+                      var colmatch, unqmatch, unqtotal, notmatch, name_not_unique, i$, len$, r, ref$, header, checked, j$, len1$, same_name, data;
+                      console.log("xoxo Checking Column Eq oxox");
+                      console.log(res);
+                      colmatch = [];
+                      unqmatch = [];
+                      unqtotal = 0;
+                      notmatch = [];
+                      name_not_unique = [];
+                      for (i$ = 0, len$ = res.length; i$ < len$; ++i$) {
+                        r = res[i$];
+                        if (r["Key"].toLowerCase() === "uni") {
+                          unqtotal += 1;
+                        }
                       }
-                      if (same_name && !checked) {
-                        name_not_unique.push(header);
-                      }
-                      if (checked) {
-                        colmatch.push(header);
-                        if (header.unique) {
-                          if (r["Key"].toLowerCase() === "uni") {
-                            unqmatch.push(header);
+                      for (i$ = 0, len$ = (ref$ = table.headers).length; i$ < len$; ++i$) {
+                        header = ref$[i$];
+                        checked = false;
+                        for (j$ = 0, len1$ = res.length; j$ < len1$; ++j$) {
+                          r = res[j$];
+                          same_name = false;
+                          if (header.name.trim() === r["Field"].trim()) {
+                            same_name = true;
+                            checked = true;
+                          }
+                          if (same_name && !checked) {
+                            name_not_unique.push(header);
+                          }
+                          if (checked) {
+                            colmatch.push(header);
+                            if (header.unique) {
+                              if (r["Key"].toLowerCase() === "uni") {
+                                unqmatch.push(header);
+                              }
+                            }
+                            break;
                           }
                         }
-                        break;
+                        if (!checked) {
+                          if (header.name !== "_id") {
+                            notmatch.push(header);
+                          }
+                        }
                       }
-                    }
-                    if (!checked) {
-                      if (header.name !== "_id") {
-                        notmatch.push(header);
+                      console.log(colmatch);
+                      console.log(unqmatch);
+                      console.log(unqtotal);
+                      console.log(notmatch);
+                      if (notmatch.length === 0) {
+                        this$.is_column_same = true;
                       }
-                    }
-                  }
-                  console.log(colmatch);
-                  console.log(unqmatch);
-                  console.log(unqtotal);
-                  console.log(notmatch);
-                  if (notmatch.length === 0) {
-                    this$.is_column_same = true;
-                  }
-                  if (this$.is_column_same && unqmatch.length === unqtotal) {
-                    return dbCleanup([table.name], table.spreadsheet_id, false, mysqlSetting, function(status){
-                      return MYSQL.insertDupMultiData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
-                        return writeLog(res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, function(err, res){
-                          var data;
-                          console.log(res);
-                          data = {
-                            code: 0,
-                            status: this$.message
-                          };
-                          this$.response.type('application/json');
-                          return this$.response.json(200, data);
-                        });
-                      });
-                    });
-                  } else if (!this$.is_column_same && !this$.is_there_other && unqmatch.length === unqtotal) {
-                    return MYSQL.dropTable(table.name, mysqlSetting, function(err, res){
-                      return MYSQL.createTable(table.name, table.headers, mysqlSetting, function(err, res){
-                        return MYSQL.insertDupMultiData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
-                          return writeLog(res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, function(err, res){
-                            var data;
-                            console.log(res);
-                            data = {
-                              code: 0,
-                              status: this$.message
-                            };
-                            this$.response.type('application/json');
-                            return this$.response.json(200, data);
+                      if (this$.is_column_same && unqmatch.length === unqtotal) {
+                        return dbCleanup([table.name], table.spreadsheet_id, false, mysqlSetting, function(status){
+                          return MYSQL.insertDupMultiData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
+                            return writeLog(res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, function(err, res){
+                              var data;
+                              console.log(res);
+                              data = {
+                                code: 0,
+                                status: this$.message
+                              };
+                              this$.response.type('application/json');
+                              return this$.response.json(200, data);
+                            });
                           });
                         });
-                      });
-                    });
-                  } else {
-                    if (name_not_unique.length <= 0) {
-                      if (unqtotal > 0) {
-                        if (unqmatch.length === unqtotal) {
-                          return dbCleanup([table.name], table.spreadsheet_id, false, mysqlSetting, function(status){
-                            return MYSQL.addColumns(table.name, notmatch, mysqlSetting, function(err, res){
-                              return MYSQL.insertDupMultiData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
-                                console.log("Diff col insert");
+                      } else if (!this$.is_column_same && !this$.is_there_other && unqmatch.length === unqtotal) {
+                        return MYSQL.dropTable(table.name, mysqlSetting, function(err, res){
+                          return MYSQL.createTable(table.name, table.headers, mysqlSetting, function(err, res){
+                            return MYSQL.insertDupMultiData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
+                              return writeLog(res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, function(err, res){
+                                var data;
                                 console.log(res);
-                                return writeLog(res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, function(err, res){
-                                  var data;
-                                  console.log(res);
-                                  data = {
-                                    code: 0,
-                                    status: this$.message
-                                  };
-                                  this$.response.type('application/json');
-                                  return this$.response.json(200, data);
-                                });
+                                data = {
+                                  code: 0,
+                                  status: this$.message
+                                };
+                                this$.response.type('application/json');
+                                return this$.response.json(200, data);
                               });
                             });
                           });
+                        });
+                      } else {
+                        if (name_not_unique.length <= 0) {
+                          if (unqtotal > 0) {
+                            if (unqmatch.length === unqtotal) {
+                              return dbCleanup([table.name], table.spreadsheet_id, false, mysqlSetting, function(status){
+                                return MYSQL.addColumns(table.name, notmatch, mysqlSetting, function(err, res){
+                                  return MYSQL.insertDupMultiData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
+                                    console.log("Diff col insert");
+                                    console.log(res);
+                                    return writeLog(res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, function(err, res){
+                                      var data;
+                                      console.log(res);
+                                      data = {
+                                        code: 0,
+                                        status: this$.message
+                                      };
+                                      this$.response.type('application/json');
+                                      return this$.response.json(200, data);
+                                    });
+                                  });
+                                });
+                              });
+                            } else {
+                              this$.message = "Must contain all and same unique column";
+                              data = {
+                                code: 1,
+                                status: this$.message,
+                                table: table.name
+                              };
+                              this$.response.type('application/json');
+                              return this$.response.json(200, data);
+                            }
+                          } else {
+                            this$.message = "Cannot append different column on table without unique column";
+                            data = {
+                              code: 1,
+                              status: this$.message,
+                              table: table.name
+                            };
+                            this$.response.type('application/json');
+                            return this$.response.json(200, data);
+                          }
                         } else {
-                          this$.message = "Must contain all and same unique column";
+                          this$.message = "Error contain column that has same name with different data type";
                           data = {
                             code: 1,
                             status: this$.message,
@@ -671,29 +721,20 @@
                           this$.response.type('application/json');
                           return this$.response.json(200, data);
                         }
-                      } else {
-                        this$.message = "Cannot append different column on table without unique column";
-                        data = {
-                          code: 1,
-                          status: this$.message,
-                          table: table.name
-                        };
-                        this$.response.type('application/json');
-                        return this$.response.json(200, data);
                       }
-                    } else {
-                      this$.message = "Error contain column that has same name with different data type";
-                      data = {
-                        code: 1,
-                        status: this$.message,
-                        table: table.name
-                      };
-                      this$.response.type('application/json');
-                      return this$.response.json(200, data);
-                    }
-                  }
-                });
+                    });
+                  });
+                }
               });
+            } else {
+              this$.message = info;
+              data = {
+                code: 1,
+                status: this$.message,
+                table: table.name + "[" + num + "]"
+              };
+              this$.response.type('application/json');
+              return this$.response.json(200, data);
             }
           });
         });

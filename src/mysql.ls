@@ -86,6 +86,11 @@
   db.getUniqueColumns = (table_name, mysqlSetting, cb) ->
     sql = "SHOW COLUMNS FROM " + table_name + " WHERE `Key` = 'UNI'"
     db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results
+
+  db.getColumnsByName = (table_name, column, mysqlSetting, cb) ->
+    sql = "SHOW COLUMNS FROM " + table_name + " WHERE `Field` = '" + column + "'"
+    db.executeSQL sql, mysqlSetting, (error, results) ->
       cb error, results  
 
   db.selectData = (table_name, col, val, mysqlSetting, cb) ->
@@ -310,6 +315,31 @@
     sql = "ALTER TABLE `" + table_name + "` " + colstring
     db.executeSQL sql, mysqlSetting, (error, results) ->
       cb error, results
+
+  db.checkRelation = (table_name, column, data, mysqlSetting, cb) ->
+    datastring = ''
+    i = 0
+    for d in data
+      if i > 0
+        datastring += " OR "
+      datastring += "`" + column + "`='" + d + "'"
+      i += 1
+
+    info = "No info"
+    valid = false
+    db.getColumnsByName table_name, column, mysqlSetting, (err, res) ->
+      if res.length != 0
+        if res[0]["Key"].toLowerCase() == "uni" or res[0]["Key"].toLowerCase() == "pri"
+          valid = true
+          sql = "SELECT COUNT(`_id`) AS COUNT FROM `" + table_name + "` WHERE " + datastring
+          db.executeSQL sql, mysqlSetting, (error, results) ->
+            cb error, results, valid, "No info"
+        else
+          info = "Column must pkey or unique"
+          cb err, res, valid, info
+      else
+        info = "Column not found"
+        cb err, res, valid, info
 
   db.cleanNullRow = (table_name, with_delete, mysqlSetting, cb) ->
     db.getColumns table_name, mysqlSetting, (err, res) ->

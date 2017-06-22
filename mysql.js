@@ -101,6 +101,13 @@
         return cb(error, results);
       });
     };
+    db.getColumnsByName = function(table_name, column, mysqlSetting, cb){
+      var sql;
+      sql = "SHOW COLUMNS FROM " + table_name + " WHERE `Field` = '" + column + "'";
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
+      });
+    };
     db.selectData = function(table_name, col, val, mysqlSetting, cb){
       var sql;
       sql = "SELECT * FROM " + table_name + " WHERE " + col + " = '" + val + "'";
@@ -390,6 +397,39 @@
       sql = "ALTER TABLE `" + table_name + "` " + colstring;
       return db.executeSQL(sql, mysqlSetting, function(error, results){
         return cb(error, results);
+      });
+    };
+    db.checkRelation = function(table_name, column, data, mysqlSetting, cb){
+      var datastring, i, i$, len$, d, info, valid;
+      datastring = '';
+      i = 0;
+      for (i$ = 0, len$ = data.length; i$ < len$; ++i$) {
+        d = data[i$];
+        if (i > 0) {
+          datastring += " OR ";
+        }
+        datastring += "`" + column + "`='" + d + "'";
+        i += 1;
+      }
+      info = "No info";
+      valid = false;
+      return db.getColumnsByName(table_name, column, mysqlSetting, function(err, res){
+        var valid, sql, info;
+        if (res.length !== 0) {
+          if (res[0]["Key"].toLowerCase() === "uni" || res[0]["Key"].toLowerCase() === "pri") {
+            valid = true;
+            sql = "SELECT COUNT(`_id`) AS COUNT FROM `" + table_name + "` WHERE " + datastring;
+            return db.executeSQL(sql, mysqlSetting, function(error, results){
+              return cb(error, results, valid, "No info");
+            });
+          } else {
+            info = "Column must pkey or unique";
+            return cb(err, res, valid, info);
+          }
+        } else {
+          info = "Column not found";
+          return cb(err, res, valid, info);
+        }
       });
     };
     db.cleanNullRow = function(table_name, with_delete, mysqlSetting, cb){
