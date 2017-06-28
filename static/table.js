@@ -69,6 +69,16 @@ Table = (function(){
     table['unique_vals'] = [];
     table['db_relations'] = [];
 
+    error = {};
+    reserved = ["s_database_state", "s_database_wlog"];
+
+    if (reserved.includes(this.name)) {
+      error['coordinate'] = this.name;
+      error['error'] = "table";
+      error['description'] = "Name is reserved";
+      return error;
+    }
+
     // Getting all the data CELLS that used
     colnum = 0;
     header_names = [];
@@ -462,10 +472,10 @@ Table = (function(){
     hdata = this.rows;
     whole_table = "";
     title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><table style=\"padding-top: 15px;padding-bottom: 15px; padding-left:20px; padding-right:20px; width:100%;\"><tr><td width=\"50%\">" + "<strong>Table " + i + "</strong><br><br>Name <input id=\"t" + i + ".databaseName\" class=\"btn btn-default btn-xs\" type=\"text\" value=\"" + this.name + "\"></td>";
-    title_div += "<td width=\"50%\" style=\"text-align: right;\"><input type=\"button\" value=\"Save\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\"> <input type=\"button\" onclick=\"window.DeleteTable(" + i + ");\" value=\"Delete\" style=\"font-size:x-small;\">";
+    title_div += "<td width=\"50%\" style=\"text-align: right;\"><input type=\"button\" value=\"Save\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\"> <input type=\"button\" value=\"Add Column\" onclick=\"window.AddColumn(" + i + ")\" style=\"font-size:x-small;\"> <input type=\"button\" onclick=\"window.DeleteTable(" + i + ");\" value=\"Delete\" style=\"font-size:x-small;\">";
     title_div += "<br><br>Data Row <input id=\"t" + i + ".databaseRange\" class=\"btn btn-default btn-xs\" style=\"max-width: 105px\" value=\"" + this.data + "\"></td></tr></table>";
     whole_table += title_div;
-    begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Column</th><th>Type</th><th>Permitted Values</th><th>Relation</th><th>Unique</th></tr></thead>";
+    begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Column</th><th>Type</th><th>Permitted Values</th><th>Relation</th><th>Unique</th><th></th></tr></thead>";
     whole_table += begin_table;
     n = 1;
     for (i$ = 0, len$ = hdata.length; i$ < len$; ++i$) {
@@ -505,10 +515,11 @@ Table = (function(){
       checked = ""
       if (hd['vunique']) { checked = "checked"; }
       table_isunique = "<td><center><input type=\"checkbox\" id=\"t" + i + ".databaseUnique." + n + "\" class=\"btn btn-default btn-xs\" onclick=\"window.UniqueCheck(" + i + ", " + n + ");\" value=\"\" " + checked + "></center></td>"
+      table_cdelete = "<td><a onclick=\"window.DelColumn(" + i + ", " + n + ")\"> [x] </a></td>"
 
-      table_validations = table_datatype + table_permitted + table_relations + table_isunique;
+      table_validations = table_datatype + table_permitted + table_relations;
       table_end = "</tr>";
-      table_per_data = table_start + table_label + table_data + table_validations + table_end;
+      table_per_data = table_start + table_label + table_data + table_validations + table_isunique + table_cdelete   + table_end;
       whole_table += table_per_data;
       n += 1;
     }

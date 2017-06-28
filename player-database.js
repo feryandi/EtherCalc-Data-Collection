@@ -69,12 +69,14 @@
             last_db: lastDB.value,
             setting: JSON.parse(document.getElementById(spreadsheet.idPrefix + "databaseLoginData").value)
           };
+          console.log(payload);
           request = {
             type: "POST",
             url: window.location.protocol + "//" + window.location.host + "/_database/state",
             contentType: "application/json",
             data: JSON.stringify(payload),
             success: function(response){
+              console.log(response);
               return console.log("STATE SAVED");
             },
             error: function(response){
@@ -381,8 +383,32 @@
           };
           $.ajax(request);
         };
+        window.AddColumn = function(n){
+          var savedData, sd;
+          savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          sd = JSON.parse(savedData.value);
+          console.log(sd);
+          sd[n - 1]["rows"].push({
+            "header": "",
+            "data": "",
+            "vtype": "non",
+            "vrange": "",
+            "vrel": "",
+            "vunique": false
+          });
+          savedData.value = JSON.stringify(sd);
+          window.RefreshView();
+        };
+        window.DelColumn = function(n, i){
+          var savedData, sd;
+          savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          sd = JSON.parse(savedData.value);
+          sd[n - 1]["rows"].splice(i - 1, 1);
+          savedData.value = JSON.stringify(sd);
+          window.RefreshView();
+        };
         window.AddManual = function(){
-          var sheet, loadsheet, sheetdict, savedData, manualData, errorMsg, error_box_s, error_box_e, sd, md, e, patt, table;
+          var sheet, loadsheet, sheetdict, savedData, manualData, errorMsg, error_box_s, error_box_e, sd, md, e, mds, i$, len$, patt, table;
           sheet = SocialCalc.GetSpreadsheetControlObject();
           loadsheet = new LoadSheet(sheet);
           sheetdict = loadsheet.LoadSheetDict();
@@ -404,46 +430,55 @@
             errorMsg.innerHTML = error_box_s + "Manual input is not valid" + error_box_e;
             return;
           }
-          if (!md.hasOwnProperty('header')) {
-            console.log("Error - header not found");
-            errorMsg.innerHTML = error_box_s + "Error parsing, header not found" + error_box_e;
-            return;
+          mds = [];
+          if (!(md instanceof Array)) {
+            mds.push(md);
+          } else {
+            mds = md;
           }
-          if (!(md['header'] instanceof Array)) {
-            console.log("Error - header not valid JSON Array");
-            errorMsg.innerHTML = error_box_s + "Error parsing, header not valid array" + error_box_e;
-            return;
+          for (i$ = 0, len$ = mds.length; i$ < len$; ++i$) {
+            md = mds[i$];
+            if (!md.hasOwnProperty('header')) {
+              console.log("Error - header not found");
+              errorMsg.innerHTML = error_box_s + "Error parsing, header not found" + error_box_e;
+              return;
+            }
+            if (!(md['header'] instanceof Array)) {
+              console.log("Error - header not valid JSON Array");
+              errorMsg.innerHTML = error_box_s + "Error parsing, header not valid array" + error_box_e;
+              return;
+            }
+            if (!md.hasOwnProperty('data')) {
+              console.log("Error - data not found");
+              errorMsg.innerHTML = error_box_s + "Error parsing, data not found" + error_box_e;
+              return;
+            }
+            patt = new RegExp("([0-9]+):([0-9]+)", "g");
+            if (!(md['data'] instanceof Array || patt.test(md['data'])) || md['data'] === "") {
+              console.log("Error - data not valid JSON Array");
+              errorMsg.innerHTML = error_box_s + "Error parsing, data not valid format" + error_box_e;
+              return;
+            }
+            if (!md.hasOwnProperty('range')) {
+              console.log("Error - range not found");
+              errorMsg.innerHTML = error_box_s + "Error parsing, range not found" + error_box_e;
+              return;
+            }
+            patt = new RegExp("([A-Z]+)([0-9]+):([A-Z]+)([0-9]+)", "g");
+            if (!(md['range'] instanceof Array || patt.test(md['range'])) || md['range'] === "") {
+              console.log("Error - range not valid");
+              errorMsg.innerHTML = error_box_s + "Error parsing, range not valid format" + error_box_e;
+              return;
+            }
+            if (md['range'] instanceof Array) {
+              md['range'] = JSON.stringify(md['range']);
+            }
+            table = new Table(sheetdict, null);
+            table.Deserialize(JSON.stringify(md));
+            table.MapHeaderData();
+            table.name = "" + SocialCalc._room + "_t" + (sd.length + 1) + "";
+            sd.push(JSON.parse(table.Serialize()));
           }
-          if (!md.hasOwnProperty('data')) {
-            console.log("Error - data not found");
-            errorMsg.innerHTML = error_box_s + "Error parsing, data not found" + error_box_e;
-            return;
-          }
-          patt = new RegExp("([0-9]+):([0-9]+)", "g");
-          if (!(md['data'] instanceof Array || patt.test(md['data'])) || md['data'] === "") {
-            console.log("Error - data not valid JSON Array");
-            errorMsg.innerHTML = error_box_s + "Error parsing, data not valid format" + error_box_e;
-            return;
-          }
-          if (!md.hasOwnProperty('range')) {
-            console.log("Error - range not found");
-            errorMsg.innerHTML = error_box_s + "Error parsing, range not found" + error_box_e;
-            return;
-          }
-          patt = new RegExp("([A-Z]+)([0-9]+):([A-Z]+)([0-9]+)", "g");
-          if (!(md['range'] instanceof Array || patt.test(md['range'])) || md['range'] === "") {
-            console.log("Error - range not valid");
-            errorMsg.innerHTML = error_box_s + "Error parsing, range not valid format" + error_box_e;
-            return;
-          }
-          if (md['range'] instanceof Array) {
-            md['range'] = JSON.stringify(md['range']);
-          }
-          table = new Table(sheetdict, null);
-          table.Deserialize(JSON.stringify(md));
-          table.MapHeaderData();
-          table.name = "" + SocialCalc._room + "_t" + (sd.length + 1) + "";
-          sd.push(JSON.parse(table.Serialize()));
           savedData.value = JSON.stringify(sd);
           window.DatabaseOnClick();
           window.SaveState();

@@ -59,6 +59,7 @@
         tables: savedData.value
         last_db: lastDB.value
         setting: JSON.parse(document.getElementById(spreadsheet.idPrefix + "databaseLoginData").value)
+    console.log(payload)
 
     request =
       * type: "POST"
@@ -66,6 +67,7 @@
         contentType: "application/json"
         data: JSON.stringify payload
         success: (response) ->
+          console.log(response)
           console.log("STATE SAVED")
         error: (response) ->
           console.log("Error saving state to database")
@@ -358,6 +360,23 @@
     $.ajax request 
     return
 
+  window.AddColumn = (n) ->
+    savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
+    sd = JSON.parse(savedData.value)
+    console.log(sd)
+    sd[(n-1)]["rows"].push({"header":"","data":"","vtype":"non","vrange":"","vrel":"","vunique":false})
+    savedData.value = JSON.stringify(sd)
+    window.RefreshView!
+    return
+
+  window.DelColumn = (n, i) ->
+    savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
+    sd = JSON.parse(savedData.value)
+    sd[(n-1)]["rows"].splice((i-1), 1)
+    savedData.value = JSON.stringify(sd)
+    window.RefreshView!
+    return
+
   window.AddManual = ->
     sheet = SocialCalc.GetSpreadsheetControlObject!
     loadsheet = new LoadSheet sheet
@@ -379,54 +398,63 @@
     catch
       console.log("Error - manual input is not valid")
       errorMsg.innerHTML = error_box_s + "Manual input is not valid" + error_box_e
-      return    
-
-    ### CHECK VALIDITY OF MANUAL INPUT
-    ## Check for header
-    if not md.hasOwnProperty('header')
-      console.log("Error - header not found")
-      errorMsg.innerHTML = error_box_s + "Error parsing, header not found" + error_box_e
       return
 
-    if not (md['header'] instanceof Array)
-      console.log("Error - header not valid JSON Array")
-      errorMsg.innerHTML = error_box_s + "Error parsing, header not valid array" + error_box_e
-      return
+    mds = []
+    ## Check if bulk add manual (array)
+    if !(md instanceof Array)
+      mds.push(md)
+    else
+      mds = md
 
-    ## Check for data
-    if not md.hasOwnProperty('data')
-      console.log("Error - data not found")
-      errorMsg.innerHTML = error_box_s + "Error parsing, data not found" + error_box_e
-      return
+    for md in mds
+      ### CHECK VALIDITY OF MANUAL INPUT
+      ## Check for header
+      if not md.hasOwnProperty('header')
+        console.log("Error - header not found")
+        errorMsg.innerHTML = error_box_s + "Error parsing, header not found" + error_box_e
+        return
 
-    patt = new RegExp("([0-9]+):([0-9]+)", "g");
-    if (!((md['data'] instanceof Array) or (patt.test(md['data']))) or (md['data'] == ""))
-      console.log("Error - data not valid JSON Array")
-      errorMsg.innerHTML = error_box_s + "Error parsing, data not valid format" + error_box_e
-      return
+      if not (md['header'] instanceof Array)
+        console.log("Error - header not valid JSON Array")
+        errorMsg.innerHTML = error_box_s + "Error parsing, header not valid array" + error_box_e
+        return
 
-    ## Check for range
-    if not md.hasOwnProperty('range')
-      console.log("Error - range not found")
-      errorMsg.innerHTML = error_box_s + "Error parsing, range not found" + error_box_e
-      return
+      ## Check for data
+      if not md.hasOwnProperty('data')
+        console.log("Error - data not found")
+        errorMsg.innerHTML = error_box_s + "Error parsing, data not found" + error_box_e
+        return
 
-    patt = new RegExp("([A-Z]+)([0-9]+):([A-Z]+)([0-9]+)", "g");
-    if (!((md['range'] instanceof Array) or (patt.test(md['range']))) or (md['range'] == ""))
-      console.log("Error - range not valid")
-      errorMsg.innerHTML = error_box_s + "Error parsing, range not valid format" + error_box_e
-      return
-    if (md['range'] instanceof Array)
-      md['range'] = JSON.stringify(md['range'])
+      patt = new RegExp("([0-9]+):([0-9]+)", "g");
+      if (!((md['data'] instanceof Array) or (patt.test(md['data']))) or (md['data'] == ""))
+        console.log("Error - data not valid JSON Array")
+        errorMsg.innerHTML = error_box_s + "Error parsing, data not valid format" + error_box_e
+        return
 
-    ## Completing the missing values using Table
-    table = new Table sheetdict, null
-    table.Deserialize JSON.stringify(md)
-    table.MapHeaderData!
-    table.name = "" + SocialCalc._room + "_t" + (sd.length + 1) + ""
+      ## Check for range
+      if not md.hasOwnProperty('range')
+        console.log("Error - range not found")
+        errorMsg.innerHTML = error_box_s + "Error parsing, range not found" + error_box_e
+        return
 
-    ### ADD TO SAVEDDATA
-    sd.push(JSON.parse(table.Serialize!))
+      patt = new RegExp("([A-Z]+)([0-9]+):([A-Z]+)([0-9]+)", "g");
+      if (!((md['range'] instanceof Array) or (patt.test(md['range']))) or (md['range'] == ""))
+        console.log("Error - range not valid")
+        errorMsg.innerHTML = error_box_s + "Error parsing, range not valid format" + error_box_e
+        return
+      if (md['range'] instanceof Array)
+        md['range'] = JSON.stringify(md['range'])
+
+      ## Completing the missing values using Table
+      table = new Table sheetdict, null
+      table.Deserialize JSON.stringify(md)
+      table.MapHeaderData!
+      table.name = "" + SocialCalc._room + "_t" + (sd.length + 1) + ""
+
+      ### ADD TO SAVEDDATA
+      sd.push(JSON.parse(table.Serialize!))
+
     savedData.value = JSON.stringify(sd)
 
     window.DatabaseOnClick!

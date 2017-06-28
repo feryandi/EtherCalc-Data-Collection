@@ -56,8 +56,10 @@
         colstring += 'PRIMARY KEY (' + col.name.trim! + ') '
       else if col.type == "CUNIQ"
         colstring += 'UNIQUE KEY `muniq` (' + col.name.trim! + ') '
+      else if col.type == "STATE"
+        colstring += '`' + col.name.trim! + '` TEXT'
       else
-        colstring += '`' + col.name.trim! + '` ' + col.type + '(160)'
+        colstring += '`' + col.name.trim! + '` VARCHAR(160)'
       i += 1
     ## Set id as primary key
     colstring += ', PRIMARY KEY (_id)'

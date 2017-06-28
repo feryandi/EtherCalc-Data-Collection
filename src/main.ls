@@ -322,6 +322,7 @@
     validated = 0
     num = -1
     info = "No info"
+    valid = true
     if table.db_relations.length > 0
       table.db_relations.forEach (value, index, harray) ->
         MYSQL.checkRelation value.target, value.column, value.data, mysqlSetting, (err, res, hvalid, hinfo) ->
@@ -569,12 +570,12 @@
       
       columnB = []
       columnB["name"] = "table_json"
-      columnB["type"] = "TEXT"
+      columnB["type"] = "STATE"
       columns.push(columnB)
 
       columnC = []
       columnC["name"] = "last_db_json"
-      columnC["type"] = "TEXT"
+      columnC["type"] = "STATE"
       columns.push(columnC)
 
       if results.length <= 0

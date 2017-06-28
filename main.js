@@ -479,11 +479,12 @@
       });
     };
     isRelationValid = function(table, mysqlSetting, cb){
-      var validated, num, info;
+      var validated, num, info, valid;
       console.log("DB Relation Check");
       validated = 0;
       num = -1;
       info = "No info";
+      valid = true;
       if (table.db_relations.length > 0) {
         return table.db_relations.forEach(function(value, index, harray){
           return MYSQL.checkRelation(value.target, value.column, value.data, mysqlSetting, function(err, res, hvalid, hinfo){
@@ -786,11 +787,11 @@
           columns.push(columnA);
           columnB = [];
           columnB["name"] = "table_json";
-          columnB["type"] = "TEXT";
+          columnB["type"] = "STATE";
           columns.push(columnB);
           columnC = [];
           columnC["name"] = "last_db_json";
-          columnC["type"] = "TEXT";
+          columnC["type"] = "STATE";
           columns.push(columnC);
           if (results.length <= 0) {
             MYSQL.createTable(name, columns, mysqlSetting, function(err, res){
