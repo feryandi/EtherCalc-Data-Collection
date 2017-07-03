@@ -147,16 +147,20 @@
           i = 1;
           for (i$ = 0, len$ = rows.length; i$ < len$; ++i$) {
             row = rows[i$];
-            row["data"] = document.getElementById("t" + n + ".databaseData." + i).value;
             row["header"] = document.getElementById("t" + n + ".databaseLabel." + i).value;
-            e = document.getElementById("t" + n + ".databaseType." + i);
-            row["vtype"] = e.options[e.selectedIndex].value;
-            e = document.getElementById("t" + n + ".databasePermitted." + i);
-            row["vrange"] = encodeURIComponent(e.value);
-            e = document.getElementById("t" + n + ".databaseRelation." + i);
-            row["vrel"] = encodeURIComponent(e.value);
-            e = document.getElementById("t" + n + ".databaseUnique." + i);
-            row["vunique"] = e.checked;
+            if (row["vvalue"] === true) {
+              row["value"] = document.getElementById("t" + n + ".databaseValue." + i).value;
+            } else {
+              row["data"] = document.getElementById("t" + n + ".databaseData." + i).value;
+              e = document.getElementById("t" + n + ".databaseType." + i);
+              row["vtype"] = e.options[e.selectedIndex].value;
+              e = document.getElementById("t" + n + ".databasePermitted." + i);
+              row["vrange"] = encodeURIComponent(e.value);
+              e = document.getElementById("t" + n + ".databaseRelation." + i);
+              row["vrel"] = encodeURIComponent(e.value);
+              e = document.getElementById("t" + n + ".databaseUnique." + i);
+              row["vunique"] = e.checked;
+            }
             i = i + 1;
           }
           table.rows = rows;
@@ -395,6 +399,19 @@
             "vrange": "",
             "vrel": "",
             "vunique": false
+          });
+          savedData.value = JSON.stringify(sd);
+          window.RefreshView();
+        };
+        window.AddValueColumn = function(n){
+          var savedData, sd;
+          savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          sd = JSON.parse(savedData.value);
+          console.log(sd);
+          sd[n - 1]["rows"].push({
+            "header": "",
+            "value": "",
+            "vvalue": true
           });
           savedData.value = JSON.stringify(sd);
           window.RefreshView();

@@ -38,8 +38,9 @@ Table = (function(){
     this.footnote = [];
     this.header = [];
     this.data = [];
+    this.datarow = [];
     //jdata = JSON.parse(data);
-    jdata = data; 
+    jdata = data;
     if (jdata !== null) {
       for (i$ = 0, len$ = jdata.length; i$ < len$; ++i$) {
         row = jdata[i$];
@@ -50,7 +51,7 @@ Table = (function(){
         } else if (row.type === "Header") {
           this.header.push(parseInt(row.row) + 1);
         } else if (row.type === "Data") {
-          this.data.push(parseInt(row.row) + 1);
+          //this.data.push(parseInt(row.row) + 1);
           this.datarow.push(parseInt(row.row) + 1);
           this.data = JSON.stringify(this.data);
         }
@@ -97,167 +98,172 @@ Table = (function(){
         if (!(table['data'][rownum] instanceof Array)){
           table['data'][rownum] = [];
         }
-        cellname = '' + row['data'] + this.datarow[i$];
-        cell = this.sheet[this.sheetname]['sheetdict'][cellname];
-
-        // DATA MERGE AND DATA CONTENT
-        mergemap = this.sheet[this.sheetname]['mergemap'];
-        mergetarget = mergemap[cellname];
-        if (mergetarget) {
-          cell.cstr = this.sheet[this.sheetname]['sheetdict'][mergetarget].cstr;
-          cell.mtype = this.sheet[this.sheetname]['sheetdict'][mergetarget].mtype;
-          table['data'][rownum][colnum] = cell.cstr;
+        // Tangani kalau cuma value aja
+        if (row.hasOwnProperty("vvalue")) {
+          table['data'][rownum][colnum] = row["value"];
         } else {
-          table['data'][rownum][colnum] = cell.cstr;
-        }
-        datas.push(table['data'][rownum][colnum]);
+          cellname = '' + row['data'] + this.datarow[i$];
+          cell = this.sheet[this.sheetname]['sheetdict'][cellname];
 
-        error = {};
-        error['coordinate'] = cellname;
-
-        // DATA TYPE IN DATABASE
-        if (row['vtype'] == "int") {
-          header['type'] = 'INT';
-        } else if (row['vtype'] == "dbl") {
-          header['type'] = 'DOUBLE'; 
-        } else if (row['vtype'] == "txt") {
-          header['type'] = 'TEXT'; 
-        }
-
-        // DATA TYPE CHECKER
-        error['error'] = "type";
-        // console.log(cellname + " <~ " + row['vtype'] + " <<>> " + cell.mtype);
-        if (row['vtype'] == "str" && cell.mtype != "str") {
-          return error;
-        } else if (row['vtype'] == "int") {
-          if (!(cell.mtype == "int" || !isNaN(cell.cstr))) {
-            return error;
-          }
-        } else if (row['vtype'] == "dbl" && cell.mtype != "str") {
-          if (!((!isNaN(cell.cstr) && (cell.cstr).toString().indexOf('.') != -1))) {
-            return error;
-          }
-        } else if (row['vtype'] == "txt" && cell.mtype != "str") {
-          return error;
-        } else if (row['vtype'] == "bln" && cell.mtype != "str") {
-          text = cell.cstr.toString().toLowerCase();
-          if (!(text == "true" || text == "false")) {
-            return error;
-          }
-        }
-
-        // DATA RANGE CHECKER
-        // Check if the vrange is an JSONArray
-        error['error'] = "range";
-        therange = decodeURIComponent(row['vrange']);
-
-        // console.log(cellname + " <~ r: " + row['vrange']);
-        if (therange.charAt(0) == "[" && therange.slice(-1) == "]") {
-          console.log("ARRAY");
-        // EX: ["text01","text02"] (JSONArray)
-          if (!(therange.includes(cell.cstr.toString()))) {
-            error['description'] = "Not in array of accepted string";
-            console.log(error);
-            return error;
-          }
-        } else if (therange.includes("-")) {
-          console.log("BETWEEN");
-        // EX: 100-2100 OR 10.5-1000
-          values = therange.split("-");
-          if (values[0] > values[1]) {
-            error['description'] = "The between rule is not right";
-            console.log(error);
-            return error;
+          // DATA MERGE AND DATA CONTENT
+          mergemap = this.sheet[this.sheetname]['mergemap'];
+          mergetarget = mergemap[cellname];
+          if (mergetarget) {
+            cell.cstr = this.sheet[this.sheetname]['sheetdict'][mergetarget].cstr;
+            cell.mtype = this.sheet[this.sheetname]['sheetdict'][mergetarget].mtype;
+            table['data'][rownum][colnum] = cell.cstr;
           } else {
-            num = parseInt(cell.cstr.toString());
-            // TO-DO: Check NaN
-            if (num < values[0] || num > values[1]) {
-              error['description'] = "Values not in between";
-              console.log(error);
-              return error;
-            }
+            table['data'][rownum][colnum] = cell.cstr;
           }
-        } else if (therange.charAt(0) == "<") {
-          console.log("LESS");
-        // EX: <200 OR <=200
-          num = parseInt(cell.cstr.toString());
-          // TO-DO: Check NaN
-          if (therange.charAt(1) == "=") {
-            val = parseInt(therange.substr(2));
-            if (!(num <= val)) {
-              error['description'] = "Values not in less equals than";
-              console.log(error);
-              return error;
-            }
-          } else {
-            val = parseInt(therange.substr(1));
-            if (!(num < val)) {
-              error['description'] = "Values not in less than";
-              console.log(error);
-              return error;
-            }
+          datas.push(table['data'][rownum][colnum]);
+
+          error = {};
+          error['coordinate'] = cellname;
+
+          // DATA TYPE IN DATABASE
+          if (row['vtype'] == "int") {
+            header['type'] = 'INT';
+          } else if (row['vtype'] == "dbl") {
+            header['type'] = 'DOUBLE'; 
+          } else if (row['vtype'] == "txt") {
+            header['type'] = 'TEXT'; 
           }
-        } else if (therange.charAt(0) == ">") {
-          console.log("GREATER");
-        // EX: >200 OR >=200
-          num = parseInt(cell.cstr.toString());
-          // TO-DO: Check NaN
-          if (therange.charAt(1) == "=") {
-            val = parseInt(therange.substr(2));
-            if (!(num >= val)) {
-              error['description'] = "Values not in greater equals than";
-              console.log(error);
-              return error;
-            }
-          } else {
-            val = parseInt(therange.substr(1));
-            if (!(num > val)) {
-              error['description'] = "Values not in greater than";
-              console.log(error);
-              return error;
-            }            
-          }
-        } else if (therange.charAt(0) == "=") {
-          console.log("EQUAL");
-        // EX: =200
-          val = parseInt(therange.substr(1));
-          if (num != val) {
-            error['description'] = "Values not in equals";
-            console.log(error);
+
+          // DATA TYPE CHECKER
+          error['error'] = "type";
+          // console.log(cellname + " <~ " + row['vtype'] + " <<>> " + cell.mtype);
+          if (row['vtype'] == "str" && cell.mtype != "str") {
             return error;
+          } else if (row['vtype'] == "int") {
+            if (!(cell.mtype == "int" || !isNaN(cell.cstr))) {
+              return error;
+            }
+          } else if (row['vtype'] == "dbl" && cell.mtype != "str") {
+            if (!((!isNaN(cell.cstr) && (cell.cstr).toString().indexOf('.') != -1))) {
+              return error;
+            }
+          } else if (row['vtype'] == "txt" && cell.mtype != "str") {
+            return error;
+          } else if (row['vtype'] == "bln" && cell.mtype != "str") {
+            text = cell.cstr.toString().toLowerCase();
+            if (!(text == "true" || text == "false")) {
+              return error;
+            }
           }
-        } else {
-          // KOSONG
-        }
 
-        // DATA RELATION CHECKER, kayanya bukan disini sih harusnya soalnya ngecek antar tabel
-        // row['vrel']
-        relValid = false;
-        therel = decodeURIComponent(row['vrel']);
-        error['error'] = "relation";
+          // DATA RANGE CHECKER
+          // Check if the vrange is an JSONArray
+          error['error'] = "range";
+          therange = decodeURIComponent(row['vrange']);
 
-        if ((therel.charAt(0) == "[") && (therel.charAt(therel.length - 1) == "]")) {
-          relValid = true; // Do Nothing
-
-        } else if (therel.split(":").length == 2) {
-          content = table['data'][rownum][colnum];
-          relRange = this.RangeComponent(therel);
-
-          for (r = relRange[1]; r <= relRange[3]; r++) {
-            for (c = relRange[0]; c <= relRange[2]; c++) {
-              checkCell = this.sheet[this.sheetname]['sheetdict'][SocialCalc.rcColname(c) + r];
-              if (checkCell.cstr == content) {
-                relValid = true;
+          // console.log(cellname + " <~ r: " + row['vrange']);
+          if (therange.charAt(0) == "[" && therange.slice(-1) == "]") {
+            console.log("ARRAY");
+          // EX: ["text01","text02"] (JSONArray)
+            if (!(therange.includes(cell.cstr.toString()))) {
+              error['description'] = "Not in array of accepted string";
+              console.log(error);
+              return error;
+            }
+          } else if (therange.includes("-")) {
+            console.log("BETWEEN");
+          // EX: 100-2100 OR 10.5-1000
+            values = therange.split("-");
+            if (values[0] > values[1]) {
+              error['description'] = "The between rule is not right";
+              console.log(error);
+              return error;
+            } else {
+              num = parseInt(cell.cstr.toString());
+              // TO-DO: Check NaN
+              if (num < values[0] || num > values[1]) {
+                error['description'] = "Values not in between";
+                console.log(error);
+                return error;
               }
             }
+          } else if (therange.charAt(0) == "<") {
+            console.log("LESS");
+          // EX: <200 OR <=200
+            num = parseInt(cell.cstr.toString());
+            // TO-DO: Check NaN
+            if (therange.charAt(1) == "=") {
+              val = parseInt(therange.substr(2));
+              if (!(num <= val)) {
+                error['description'] = "Values not in less equals than";
+                console.log(error);
+                return error;
+              }
+            } else {
+              val = parseInt(therange.substr(1));
+              if (!(num < val)) {
+                error['description'] = "Values not in less than";
+                console.log(error);
+                return error;
+              }
+            }
+          } else if (therange.charAt(0) == ">") {
+            console.log("GREATER");
+          // EX: >200 OR >=200
+            num = parseInt(cell.cstr.toString());
+            // TO-DO: Check NaN
+            if (therange.charAt(1) == "=") {
+              val = parseInt(therange.substr(2));
+              if (!(num >= val)) {
+                error['description'] = "Values not in greater equals than";
+                console.log(error);
+                return error;
+              }
+            } else {
+              val = parseInt(therange.substr(1));
+              if (!(num > val)) {
+                error['description'] = "Values not in greater than";
+                console.log(error);
+                return error;
+              }            
+            }
+          } else if (therange.charAt(0) == "=") {
+            console.log("EQUAL");
+          // EX: =200
+            val = parseInt(therange.substr(1));
+            if (num != val) {
+              error['description'] = "Values not in equals";
+              console.log(error);
+              return error;
+            }
+          } else {
+            // KOSONG
           }
-        } else {
-          relValid = true;
-        }
 
-        if (!relValid) {          
-          error['description'] = "Unrelated value detected";
-          return error;
+          // DATA RELATION CHECKER, kayanya bukan disini sih harusnya soalnya ngecek antar tabel
+          // row['vrel']
+          relValid = false;
+          therel = decodeURIComponent(row['vrel']);
+          error['error'] = "relation";
+
+          if ((therel.charAt(0) == "[") && (therel.charAt(therel.length - 1) == "]")) {
+            relValid = true; // Do Nothing
+
+          } else if (therel.split(":").length == 2) {
+            content = table['data'][rownum][colnum];
+            relRange = this.RangeComponent(therel);
+
+            for (r = relRange[1]; r <= relRange[3]; r++) {
+              for (c = relRange[0]; c <= relRange[2]; c++) {
+                checkCell = this.sheet[this.sheetname]['sheetdict'][SocialCalc.rcColname(c) + r];
+                if (checkCell.cstr == content) {
+                  relValid = true;
+                }
+              }
+            }
+          } else {
+            relValid = true;
+          }
+
+          if (!relValid) {          
+            error['description'] = "Unrelated value detected";
+            return error;
+          }
         }
         rownum += 1;
       }
@@ -314,6 +320,8 @@ Table = (function(){
     if (this.rawdata !== undefined && this.rawdata !== null) {
       this.ParseData(this.rawdata);
     }
+    //this.data = this.datarow;
+    this.data = this.datarow[0] + ":" + this.datarow[(this.datarow.length - 1)]; 
   };
   Table.prototype.IsHasData = function(){
     return this.datarow.length > 0;
@@ -355,7 +363,7 @@ Table = (function(){
         r = this.data.split(":");
         for (i = parseInt(r[0]); i <= parseInt(r[1]); i++) {
           this.datarow.push(i);
-        }        
+        }
       }
     }
 
@@ -472,7 +480,7 @@ Table = (function(){
     hdata = this.rows;
     whole_table = "";
     title_div = "<div style=\"margin-left:8px;border:1px solid rgb(192,192,192);display:inline-block;\"><div><table style=\"padding-top: 15px;padding-bottom: 15px; padding-left:20px; padding-right:20px; width:100%;\"><tr><td width=\"50%\">" + "<strong>Table " + i + "</strong><br><br>Name <input id=\"t" + i + ".databaseName\" class=\"btn btn-default btn-xs\" type=\"text\" value=\"" + this.name + "\"></td>";
-    title_div += "<td width=\"50%\" style=\"text-align: right;\"><input type=\"button\" value=\"Save\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\"> <input type=\"button\" value=\"Add Column\" onclick=\"window.AddColumn(" + i + ")\" style=\"font-size:x-small;\"> <input type=\"button\" onclick=\"window.DeleteTable(" + i + ");\" value=\"Delete\" style=\"font-size:x-small;\">";
+    title_div += "<td width=\"50%\" style=\"text-align: right;\"><input type=\"button\" value=\"Save\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\"> <input type=\"button\" value=\"Add Column\" onclick=\"window.AddColumn(" + i + ")\" style=\"font-size:x-small;\"> <input type=\"button\" value=\"Add Value Col.\" onclick=\"window.AddValueColumn(" + i + ")\" style=\"font-size:x-small;\"> <input type=\"button\" onclick=\"window.DeleteTable(" + i + ");\" value=\"Delete\" style=\"font-size:x-small;\">";
     title_div += "<br><br>Data Row <input id=\"t" + i + ".databaseRange\" class=\"btn btn-default btn-xs\" style=\"max-width: 105px\" value=\"" + this.data + "\"></td></tr></table>";
     whole_table += title_div;
     begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Column</th><th>Type</th><th>Permitted Values</th><th>Relation</th><th>Unique</th><th></th></tr></thead>";
@@ -481,46 +489,57 @@ Table = (function(){
     for (i$ = 0, len$ = hdata.length; i$ < len$; ++i$) {
       hd = hdata[i$];
       table_start = "<tr>";
-      table_label = "<td><input id=\"t" + i + ".databaseLabel." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['header'] + "\" /></td>";
-      table_data = "<td><input id=\"t" + i + ".databaseData." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" style=\"max-width: 85px\" value=\"" + hd['data'] + "\" /></td>";
-      is_int = '';
-      is_dbl = '';
-      is_str = '';
-      is_txt = '';
-      is_bln = '';
-      is_non = '';
-      switch (hd['vtype']) {
-      case 'non':
-        is_non = 'selected';
-        break;
-      case 'int':
-        is_int = 'selected';
-        break;
-      case 'dbl':
-        is_dbl = 'selected';
-        break;
-      case 'str':
-        is_str = 'selected';
-        break;
-      case 'txt':
-        is_txt = 'selected';
-        break;
-      case 'bln':
-        is_bln = 'selected';
-      }
-      table_datatype = "<td><select id=\"t" + i + ".databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option " + is_non + " value=\"non\">None</option><option " + is_int + " value=\"int\">Integer</option><option " + is_dbl + " value=\"dbl\">Double</option><option " + is_str + " value=\"str\">String</option><option " + is_bln + " value=\"bln\">Boolean</option></select></td>";
-      table_permitted = "<td><input id=\"t" + i + ".databasePermitted." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + decodeURIComponent(hd['vrange']).replace(/"/g, '&quot;') + "\" ></td>";
-      table_relations = "<td><input id=\"t" + i + ".databaseRelation." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + decodeURIComponent(hd['vrel']).replace(/"/g, '&quot;') + "\" style=\"max-width: 105px\"></td>"
-      
-      checked = ""
-      if (hd['vunique']) { checked = "checked"; }
-      table_isunique = "<td><center><input type=\"checkbox\" id=\"t" + i + ".databaseUnique." + n + "\" class=\"btn btn-default btn-xs\" onclick=\"window.UniqueCheck(" + i + ", " + n + ");\" value=\"\" " + checked + "></center></td>"
-      table_cdelete = "<td><a onclick=\"window.DelColumn(" + i + ", " + n + ")\"> [x] </a></td>"
 
-      table_validations = table_datatype + table_permitted + table_relations;
-      table_end = "</tr>";
-      table_per_data = table_start + table_label + table_data + table_validations + table_isunique + table_cdelete   + table_end;
-      whole_table += table_per_data;
+      if (hd["vvalue"] === true) {
+        table_label = "<td><input id=\"t" + i + ".databaseLabel." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['header'] + "\" /></td>";
+        table_data = "<td style=\"text-align: right;\">Static value:</td><td colspan=\"4\"> <input id=\"t" + i + ".databaseValue." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['value'] + "\" /></td>";
+        table_cdelete = "<td><a onclick=\"window.DelColumn(" + i + ", " + n + ")\"> [x] </a></td>"
+        table_end = "</tr>";
+        table_per_data = table_start + table_label + table_data + table_cdelete + table_end;
+        whole_table += table_per_data;
+      } else {
+        table_label = "<td><input id=\"t" + i + ".databaseLabel." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + hd['header'] + "\" /></td>";
+        table_data = "<td><input id=\"t" + i + ".databaseData." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" style=\"max-width: 85px\" value=\"" + hd['data'] + "\" /></td>";
+        is_int = '';
+        is_dbl = '';
+        is_str = '';
+        is_txt = '';
+        is_bln = '';
+        is_non = '';
+        switch (hd['vtype']) {
+        case 'non':
+          is_non = 'selected';
+          break;
+        case 'int':
+          is_int = 'selected';
+          break;
+        case 'dbl':
+          is_dbl = 'selected';
+          break;
+        case 'str':
+          is_str = 'selected';
+          break;
+        case 'txt':
+          is_txt = 'selected';
+          break;
+        case 'bln':
+          is_bln = 'selected';
+        }
+        table_datatype = "<td><select id=\"t" + i + ".databaseType." + n + "\" size=\"1\" class=\"btn btn-default btn-xs\"><option " + is_non + " value=\"non\">None</option><option " + is_int + " value=\"int\">Integer</option><option " + is_dbl + " value=\"dbl\">Double</option><option " + is_str + " value=\"str\">String</option><option " + is_bln + " value=\"bln\">Boolean</option></select></td>";
+        table_permitted = "<td><input id=\"t" + i + ".databasePermitted." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + decodeURIComponent(hd['vrange']).replace(/"/g, '&quot;') + "\" ></td>";
+        table_relations = "<td><input id=\"t" + i + ".databaseRelation." + n + "\" onchange=\"\" class=\"btn btn-default btn-xs\" value=\"" + decodeURIComponent(hd['vrel']).replace(/"/g, '&quot;') + "\" style=\"max-width: 105px\"></td>"
+        
+        checked = ""
+        if (hd['vunique']) { checked = "checked"; }
+        table_isunique = "<td><center><input type=\"checkbox\" id=\"t" + i + ".databaseUnique." + n + "\" class=\"btn btn-default btn-xs\" onclick=\"window.UniqueCheck(" + i + ", " + n + ");\" value=\"\" " + checked + "></center></td>"
+        table_cdelete = "<td><a onclick=\"window.DelColumn(" + i + ", " + n + ")\"> [x] </a></td>"
+
+        table_validations = table_datatype + table_permitted + table_relations;
+        table_end = "</tr>";
+        table_per_data = table_start + table_label + table_data + table_validations + table_isunique + table_cdelete + table_end;
+        whole_table += table_per_data;
+      }
+  
       n += 1;
     }
     end_table = "</table></div></div>";
