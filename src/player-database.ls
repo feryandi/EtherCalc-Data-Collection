@@ -407,6 +407,7 @@
     try
       sd = JSON.parse(savedData.value)
       md = JSON.parse(manualData.value)
+      console.log(md);
     catch
       console.log("Error - manual input is not valid")
       errorMsg.innerHTML = error_box_s + "Manual input is not valid" + error_box_e
@@ -459,6 +460,7 @@
         md['range'] = JSON.stringify(md['range'])
 
       ## Completing the missing values using Table
+      console.log(JSON.stringify(md))
       table = new Table sheetdict, null
       table.Deserialize JSON.stringify(md)
       table.MapHeaderData!

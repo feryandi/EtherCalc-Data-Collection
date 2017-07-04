@@ -60,10 +60,10 @@ FeatureSheetRow = (function(){
   FeatureSheetRow.prototype.GenerateSingularFeatureCrf = function(mysheet, sheetname, sc, ec, sr, er){
     var feadict, i$, to$, crow, rowcelldict, j$, to1$, ccol, mycell, blankflag;
     feadict = {};
-    console.log("SC: " + sc);
-    console.log("EC: " + ec);
-    console.log("SR: " + sr);
-    console.log("ER: " + er);
+    //console.log("SC: " + sc);
+    //console.log("EC: " + ec);
+    //console.log("SR: " + sr);
+    //console.log("ER: " + er);
     // batesin barisnya disini bisa
     crow = parseInt(sr);
     while (crow <= parseInt(er)) {
@@ -765,7 +765,7 @@ LoadSheet = (function(){
         curX += parseInt(nextX);
         nextX = parseInt(cw);
 
-        //console.log("Cell Coord: [" + curX + ", "+ curY + "]")
+        // console.log("Cell Coord: [" + curX + ", "+ curY + "]")
 
         cellName = rcColname(colnum) + rownum;
 
@@ -776,6 +776,9 @@ LoadSheet = (function(){
 
         if (cellType > 0 || cellType < 5) {
           cStr = cell.datavalue;
+          if (cell.datatype == "c") {
+            cStr = cell.formula;    
+          }
           cellDType = this.GetDataType(cell.datatype, cStr);
           cellAttr = this.wb.sheet.EncodeCellAttributes(cellName);
 

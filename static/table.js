@@ -105,164 +105,169 @@ Table = (function(){
           cellname = '' + row['data'] + this.datarow[i$];
           cell = this.sheet[this.sheetname]['sheetdict'][cellname];
 
-          // DATA MERGE AND DATA CONTENT
-          mergemap = this.sheet[this.sheetname]['mergemap'];
-          mergetarget = mergemap[cellname];
-          if (mergetarget) {
-            cell.cstr = this.sheet[this.sheetname]['sheetdict'][mergetarget].cstr;
-            cell.mtype = this.sheet[this.sheetname]['sheetdict'][mergetarget].mtype;
-            table['data'][rownum][colnum] = cell.cstr;
-          } else {
-            table['data'][rownum][colnum] = cell.cstr;
-          }
-          datas.push(table['data'][rownum][colnum]);
-
-          error = {};
-          error['coordinate'] = cellname;
-
-          // DATA TYPE IN DATABASE
-          if (row['vtype'] == "int") {
-            header['type'] = 'INT';
-          } else if (row['vtype'] == "dbl") {
-            header['type'] = 'DOUBLE'; 
-          } else if (row['vtype'] == "txt") {
-            header['type'] = 'TEXT'; 
-          }
-
-          // DATA TYPE CHECKER
-          error['error'] = "type";
-          // console.log(cellname + " <~ " + row['vtype'] + " <<>> " + cell.mtype);
-          if (row['vtype'] == "str" && cell.mtype != "str") {
-            return error;
-          } else if (row['vtype'] == "int") {
-            if (!(cell.mtype == "int" || !isNaN(cell.cstr))) {
-              return error;
-            }
-          } else if (row['vtype'] == "dbl" && cell.mtype != "str") {
-            if (!((!isNaN(cell.cstr) && (cell.cstr).toString().indexOf('.') != -1))) {
-              return error;
-            }
-          } else if (row['vtype'] == "txt" && cell.mtype != "str") {
-            return error;
-          } else if (row['vtype'] == "bln" && cell.mtype != "str") {
-            text = cell.cstr.toString().toLowerCase();
-            if (!(text == "true" || text == "false")) {
-              return error;
-            }
-          }
-
-          // DATA RANGE CHECKER
-          // Check if the vrange is an JSONArray
-          error['error'] = "range";
-          therange = decodeURIComponent(row['vrange']);
-
-          // console.log(cellname + " <~ r: " + row['vrange']);
-          if (therange.charAt(0) == "[" && therange.slice(-1) == "]") {
-            console.log("ARRAY");
-          // EX: ["text01","text02"] (JSONArray)
-            if (!(therange.includes(cell.cstr.toString()))) {
-              error['description'] = "Not in array of accepted string";
-              console.log(error);
-              return error;
-            }
-          } else if (therange.includes("-")) {
-            console.log("BETWEEN");
-          // EX: 100-2100 OR 10.5-1000
-            values = therange.split("-");
-            if (values[0] > values[1]) {
-              error['description'] = "The between rule is not right";
-              console.log(error);
-              return error;
+          if (typeof cell !== "undefined") {            
+            // DATA MERGE AND DATA CONTENT
+            mergemap = this.sheet[this.sheetname]['mergemap'];
+            mergetarget = mergemap[cellname];
+            if (mergetarget) {
+              cell.cstr = this.sheet[this.sheetname]['sheetdict'][mergetarget].cstr;
+              cell.mtype = this.sheet[this.sheetname]['sheetdict'][mergetarget].mtype;
+              table['data'][rownum][colnum] = cell.cstr;
             } else {
-              num = parseInt(cell.cstr.toString());
-              // TO-DO: Check NaN
-              if (num < values[0] || num > values[1]) {
-                error['description'] = "Values not in between";
-                console.log(error);
-                return error;
-              }
+              table['data'][rownum][colnum] = cell.cstr;
             }
-          } else if (therange.charAt(0) == "<") {
-            console.log("LESS");
-          // EX: <200 OR <=200
-            num = parseInt(cell.cstr.toString());
-            // TO-DO: Check NaN
-            if (therange.charAt(1) == "=") {
-              val = parseInt(therange.substr(2));
-              if (!(num <= val)) {
-                error['description'] = "Values not in less equals than";
-                console.log(error);
-                return error;
-              }
-            } else {
-              val = parseInt(therange.substr(1));
-              if (!(num < val)) {
-                error['description'] = "Values not in less than";
-                console.log(error);
-                return error;
-              }
+            datas.push(table['data'][rownum][colnum]);
+
+            error = {};
+            error['coordinate'] = cellname;
+
+            // DATA TYPE IN DATABASE
+            if (row['vtype'] == "int") {
+              header['type'] = 'INT';
+            } else if (row['vtype'] == "dbl") {
+              header['type'] = 'DOUBLE'; 
+            } else if (row['vtype'] == "txt") {
+              header['type'] = 'TEXT'; 
             }
-          } else if (therange.charAt(0) == ">") {
-            console.log("GREATER");
-          // EX: >200 OR >=200
-            num = parseInt(cell.cstr.toString());
-            // TO-DO: Check NaN
-            if (therange.charAt(1) == "=") {
-              val = parseInt(therange.substr(2));
-              if (!(num >= val)) {
-                error['description'] = "Values not in greater equals than";
-                console.log(error);
-                return error;
-              }
-            } else {
-              val = parseInt(therange.substr(1));
-              if (!(num > val)) {
-                error['description'] = "Values not in greater than";
-                console.log(error);
-                return error;
-              }            
-            }
-          } else if (therange.charAt(0) == "=") {
-            console.log("EQUAL");
-          // EX: =200
-            val = parseInt(therange.substr(1));
-            if (num != val) {
-              error['description'] = "Values not in equals";
-              console.log(error);
+
+            // DATA TYPE CHECKER
+            error['error'] = "type";
+            // console.log(cellname + " <~ " + row['vtype'] + " <<>> " + cell.mtype);
+            if (row['vtype'] == "str" && cell.mtype != "str") {
               return error;
+            } else if (row['vtype'] == "int") {
+              if (!(cell.mtype == "int" || !isNaN(cell.cstr))) {
+                return error;
+              }
+            } else if (row['vtype'] == "dbl" && cell.mtype != "str") {
+              if (!((!isNaN(cell.cstr) && (cell.cstr).toString().indexOf('.') != -1))) {
+                return error;
+              }
+            } else if (row['vtype'] == "txt" && cell.mtype != "str") {
+              return error;
+            } else if (row['vtype'] == "bln" && cell.mtype != "str") {
+              text = cell.cstr.toString().toLowerCase();
+              if (!(text == "true" || text == "false")) {
+                return error;
+              }
             }
-          } else {
-            // KOSONG
-          }
 
-          // DATA RELATION CHECKER, kayanya bukan disini sih harusnya soalnya ngecek antar tabel
-          // row['vrel']
-          relValid = false;
-          therel = decodeURIComponent(row['vrel']);
-          error['error'] = "relation";
+            // DATA RANGE CHECKER
+            // Check if the vrange is an JSONArray
+            error['error'] = "range";
+            therange = decodeURIComponent(row['vrange']);
 
-          if ((therel.charAt(0) == "[") && (therel.charAt(therel.length - 1) == "]")) {
-            relValid = true; // Do Nothing
-
-          } else if (therel.split(":").length == 2) {
-            content = table['data'][rownum][colnum];
-            relRange = this.RangeComponent(therel);
-
-            for (r = relRange[1]; r <= relRange[3]; r++) {
-              for (c = relRange[0]; c <= relRange[2]; c++) {
-                checkCell = this.sheet[this.sheetname]['sheetdict'][SocialCalc.rcColname(c) + r];
-                if (checkCell.cstr == content) {
-                  relValid = true;
+            // console.log(cellname + " <~ r: " + row['vrange']);
+            if (therange.charAt(0) == "[" && therange.slice(-1) == "]") {
+              console.log("ARRAY");
+            // EX: ["text01","text02"] (JSONArray)
+              if (!(therange.includes(cell.cstr.toString()))) {
+                error['description'] = "Not in array of accepted string";
+                console.log(error);
+                return error;
+              }
+            } else if (therange.includes("-")) {
+              console.log("BETWEEN");
+            // EX: 100-2100 OR 10.5-1000
+              values = therange.split("-");
+              if (values[0] > values[1]) {
+                error['description'] = "The between rule is not right";
+                console.log(error);
+                return error;
+              } else {
+                num = parseInt(cell.cstr.toString());
+                // TO-DO: Check NaN
+                if (num < values[0] || num > values[1]) {
+                  error['description'] = "Values not in between";
+                  console.log(error);
+                  return error;
                 }
               }
+            } else if (therange.charAt(0) == "<") {
+              console.log("LESS");
+            // EX: <200 OR <=200
+              num = parseInt(cell.cstr.toString());
+              // TO-DO: Check NaN
+              if (therange.charAt(1) == "=") {
+                val = parseInt(therange.substr(2));
+                if (!(num <= val)) {
+                  error['description'] = "Values not in less equals than";
+                  console.log(error);
+                  return error;
+                }
+              } else {
+                val = parseInt(therange.substr(1));
+                if (!(num < val)) {
+                  error['description'] = "Values not in less than";
+                  console.log(error);
+                  return error;
+                }
+              }
+            } else if (therange.charAt(0) == ">") {
+              console.log("GREATER");
+            // EX: >200 OR >=200
+              num = parseInt(cell.cstr.toString());
+              // TO-DO: Check NaN
+              if (therange.charAt(1) == "=") {
+                val = parseInt(therange.substr(2));
+                if (!(num >= val)) {
+                  error['description'] = "Values not in greater equals than";
+                  console.log(error);
+                  return error;
+                }
+              } else {
+                val = parseInt(therange.substr(1));
+                if (!(num > val)) {
+                  error['description'] = "Values not in greater than";
+                  console.log(error);
+                  return error;
+                }            
+              }
+            } else if (therange.charAt(0) == "=") {
+              console.log("EQUAL");
+            // EX: =200
+              val = parseInt(therange.substr(1));
+              if (num != val) {
+                error['description'] = "Values not in equals";
+                console.log(error);
+                return error;
+              }
+            } else {
+              // KOSONG
+            }
+
+            // DATA RELATION CHECKER, kayanya bukan disini sih harusnya soalnya ngecek antar tabel
+            // row['vrel']
+            relValid = false;
+            therel = decodeURIComponent(row['vrel']);
+            error['error'] = "relation";
+
+            if ((therel.charAt(0) == "[") && (therel.charAt(therel.length - 1) == "]")) {
+              relValid = true; // Do Nothing
+
+            } else if (therel.split(":").length == 2) {
+              content = table['data'][rownum][colnum];
+              relRange = this.RangeComponent(therel);
+
+              for (r = relRange[1]; r <= relRange[3]; r++) {
+                for (c = relRange[0]; c <= relRange[2]; c++) {
+                  checkCell = this.sheet[this.sheetname]['sheetdict'][SocialCalc.rcColname(c) + r];
+                  if (checkCell.cstr == content) {
+                    relValid = true;
+                  }
+                }
+              }
+            } else {
+              relValid = true;
+            }
+
+            if (!relValid) {          
+              error['description'] = "Unrelated value detected";
+              return error;
             }
           } else {
-            relValid = true;
-          }
-
-          if (!relValid) {          
-            error['description'] = "Unrelated value detected";
-            return error;
+            table['data'][rownum][colnum] = "";
+            datas.push(table['data'][rownum][colnum]);
           }
         }
         rownum += 1;
@@ -421,10 +426,18 @@ Table = (function(){
     var i$, to$, col, tempobj, j$, ref$, len$, h, results$ = [];
     this.rows = [];
 
-    if (this.range && this.range.length <= 10 && !this.startcol && !this.endcol) {
+    console.log("DEBUG HERE");
+    console.log(this.range);
+    console.log(this.range.length);
+    console.log(this.startcol);
+    console.log(this.endcol);
+    if (this.range && !this.startcol && !this.endcol) {
       try {
+        console.log("here");
         this.affectedcol = JSON.parse(this.range);
+        console.log(this.affectedcol);
       } catch (e$) {
+        console.log(e$);
         temp = this.RangeComponent(String(this.range));
         this.startcol = temp[0];
         this.endcol = temp[2];

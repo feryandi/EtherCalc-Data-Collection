@@ -441,6 +441,7 @@
           try {
             sd = JSON.parse(savedData.value);
             md = JSON.parse(manualData.value);
+            console.log(md);
           } catch (e$) {
             e = e$;
             console.log("Error - manual input is not valid");
@@ -490,6 +491,7 @@
             if (md['range'] instanceof Array) {
               md['range'] = JSON.stringify(md['range']);
             }
+            console.log(JSON.stringify(md));
             table = new Table(sheetdict, null);
             table.Deserialize(JSON.stringify(md));
             table.MapHeaderData();
