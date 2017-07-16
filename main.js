@@ -2,7 +2,7 @@
 (function(){
   var join$ = [].join;
   this.include = function(){
-    var Table, FrameFinder, clusterfck, fs, J, csvParse, DB, SC, MYSQL, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, RealBin, DevMode, dataDir, sendFile, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, dbCleanup, writeLog, isRelationValid, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
+    var Table, FrameFinder, clusterfck, fs, J, csvParse, DB, SC, MYSQL, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, RealBin, DevMode, dataDir, sendFile, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, dbCleanup, writeLog, isRelationValid, isConflict, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
     this.use('json', this.app.router, this.express['static'](__dirname));
     this.app.use('/edit', this.express['static'](__dirname));
     this.app.use('/view', this.express['static'](__dirname));
@@ -509,6 +509,46 @@
         return cb(valid, num, info);
       }
     };
+    isConflict = function(table, mysqlSetting, cb){
+      var validated, info, columns, i$, ref$, len$, h;
+      console.log("Conflict Check");
+      validated = 0;
+      info = "No info";
+      columns = [];
+      for (i$ = 0, len$ = (ref$ = table.headers).length; i$ < len$; ++i$) {
+        h = ref$[i$];
+        if (!h.unique) {
+          columns.push(h.name);
+        }
+      }
+      return MYSQL.checkConflict(table.name, columns, table.unique_vals, table.spreadsheet_id, mysqlSetting, function(err, res){
+        return cb(err, res);
+      });
+    };
+    this.post({
+      '/_database/validate': function(){
+        var this$, mysqlSetting, tablec, table;
+        this$ = this;
+        mysqlSetting = this.body.setting;
+        tablec = new Table(null, null);
+        table = tablec.TupleDeserialize(this.body.table);
+        this$.message = "OK";
+        return isConflict(table, mysqlSetting, function(err, res){
+          var cod, data;
+          cod = 0;
+          if (res[0]['COUNT'] !== 0) {
+            cod = 1;
+          }
+          data = {
+            code: cod,
+            status: "Conflict detected",
+            table: table.name
+          };
+          this$.response.type('application/json');
+          return this$.response.json(200, data);
+        });
+      }
+    });
     this.post({
       '/_database/create': function(){
         var this$, mysqlSetting, tablec, table, db_log_name, db_log_columns, db_log_columns_c;

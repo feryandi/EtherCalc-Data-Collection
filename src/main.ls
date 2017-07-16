@@ -340,6 +340,40 @@
     else
       cb valid, num, info
 
+  isConflict = (table, mysqlSetting, cb) ->
+    console.log("Conflict Check")
+    validated = 0
+    info = "No info"
+
+    columns = []
+    for h in table.headers
+      if not h.unique
+        columns.push(h.name)
+
+    MYSQL.checkConflict table.name, columns, table.unique_vals, table.spreadsheet_id, mysqlSetting, (err, res) ->
+      cb err, res
+
+  @post '/_database/validate': ->
+    this$ = this
+    mysqlSetting = @body.setting
+
+    tablec = new Table null, null
+    table = tablec.TupleDeserialize @body.table
+
+    this$.message = "OK"
+
+    isConflict table, mysqlSetting, (err, res) ->
+      cod = 0
+      if res[0]['COUNT'] != 0
+        cod = 1
+
+      data =
+        * code: cod
+          status: "Conflict detected"
+          table: table.name
+      this$.response.type \application/json
+      this$.response.json 200 data
+
   @post '/_database/create': ->
     this$ = this
     mysqlSetting = @body.setting

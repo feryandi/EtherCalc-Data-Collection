@@ -209,6 +209,62 @@
           };
           $.ajax(request);
         };
+        window.Validate = function(){
+          var savedData, errorMsg, sheet, loadsheet, sheetdict, tables, i, i$, len$, t, table, spreadsheet_id, payload, error, ref$, request, err;
+          console.log("Validate");
+          savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          errorMsg = document.getElementById(spreadsheet.idPrefix + "databaseErrorMsg");
+          errorMsg.innerHTML = "Validating...";
+          sheet = SocialCalc.GetSpreadsheetControlObject();
+          loadsheet = new LoadSheet(sheet);
+          sheetdict = loadsheet.LoadSheetDict();
+          try {
+            tables = JSON.parse(savedData.value);
+            i = 0;
+            for (i$ = 0, len$ = tables.length; i$ < len$; ++i$) {
+              t = tables[i$];
+              table = new Table(sheetdict, null);
+              table.Deserialize(JSON.stringify(t));
+              spreadsheet_id = SocialCalc._room;
+              payload = {
+                name: SocialCalc._room,
+                table: table.TupleSerializeWithChecker(spreadsheet_id),
+                setting: JSON.parse(document.getElementById(spreadsheet.idPrefix + "databaseLoginData").value)
+              };
+              error = true;
+              error = (ref$ = payload.table.error) != null ? ref$ : false;
+              request = {
+                type: "POST",
+                url: window.location.protocol + "//" + window.location.host + "/_database/validate",
+                contentType: "application/json",
+                data: JSON.stringify(payload),
+                success: fn$,
+                error: fn1$
+              };
+              $.ajax(request);
+            }
+            errorMsg.innerHTML = "No conflict detected";
+          } catch (e$) {
+            err = e$;
+            errorMsg.innerHTML = "Failed validating to database";
+            console.log(err);
+          }
+          function fn$(response){
+            var error_box;
+            i += 1;
+            console.log("OK OK !!OK MYSQL OK!! OK OK");
+            console.log(response);
+            if (response.code === 1) {
+              error_box = "<div style=\"background: rgb(255, 210, 202); padding: 5px; border-radius: 3px;\">(`" + response.table + "`) " + response.status + "</div>";
+              return errorMsg.innerHTML = error_box;
+            }
+          }
+          function fn1$(response){
+            i += 1;
+            console.log("Error validating data to database");
+            return console.log(response);
+          }
+        };
         window.Save = function(){
           var savedData, lastDB, errorMsg, errCount, sheet, loadsheet, sheetdict, tables, i, dbSaved, dbLast, dbDelete, sd, i$, len$, t, ld, dl, payload, request, err, table, spreadsheet_id, error, ref$, val_type, error_box;
           console.log("SAVING TO DATABASE");
@@ -355,7 +411,6 @@
                 links.push($.get(getLink(cluster.sc, cluster.ec, cluster.sr, cluster.er)));
                 clusters.push([cluster.sc, cluster.ec, cluster.sr, cluster.er]);
               }
-              console.log(raw);
               gview = sheet.views.database.element;
               content_div = content_div_s;
               total = 0;
@@ -367,7 +422,7 @@
                   if (data.length > 0) {
                     table = new Table(sheetdict, data);
                     table.SetColumnRange(parseInt(clusters[i][0]), parseInt(clusters[i][1]));
-                    table.name = "" + SocialCalc._room + "_t" + (i - 1) + "";
+                    table.name = "" + SocialCalc._room + "_t" + i + "";
                     if (table.IsHasData()) {
                       total += 1;
                       sd.push(JSON.parse(table.Serialize()));

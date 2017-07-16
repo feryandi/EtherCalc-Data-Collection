@@ -450,6 +450,7 @@ Table = (function(){
 
     // Yang di for itu kolom karena dengan asumsi bahwa tabelnya headernya horizontal
     for (i$ = 0, to$ = this.affectedcol.length; i$ < to$; ++i$) {
+      laststr = "";
       col = this.affectedcol[i$];
       tempobj = {};
       tempobj['header'] = "";
@@ -460,17 +461,29 @@ Table = (function(){
         mergetarget = mergemap[SocialCalc.rcColname(col) + h];
         if (mergetarget) {
           mcstr = this.sheet[this.sheetname]['sheetdict'][mergetarget].cstr;
-          if (tempobj["header"].trim() != mcstr.trim()) {
-            tempobj['header'] += mcstr + " ";
+          if (laststr.trim() != mcstr.trim()) {
+            laststr += mcstr;
+            if (tempobj['header'].trim() != "" && mcstr.trim() != "") {
+              tempobj['header'] += "_";
+            }
+            tempobj['header'] += mcstr;
           }
         }
         if (hcell) {
           try {
-            if (tempobj['header'].trim() != hcell.cstr.trim()) {
-              tempobj['header'] += hcell.cstr + " ";
+            if (laststr.trim() != hcell.cstr.trim()) {
+              laststr += hcell.cstr;
+              if (tempobj['header'].trim() != "" && hcell.cstr.trim() != "") {
+                tempobj['header'] += "_";
+              }
+              tempobj['header'] += hcell.cstr;
             }
           } catch (e) {
-            tempobj['header'] += hcell.cstr + " ";
+            laststr += hcell.cstr;
+            if (tempobj['header'].trim() != "" && hcell.cstr.trim() != "") {
+              tempobj['header'] += "_";
+            }
+            tempobj['header'] += hcell.cstr;
           }
         }
       }

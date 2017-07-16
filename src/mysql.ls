@@ -337,11 +337,32 @@
           db.executeSQL sql, mysqlSetting, (error, results) ->
             cb error, results, valid, "No info"
         else
-          info = "Column must pkey or unique"
+          info = "Referenced column must pkey or unique"
           cb err, res, valid, info
       else
-        info = "Column not found"
+        info = "Referenced column not found"
         cb err, res, valid, info
+
+  db.checkConflict = (table_name, columns, uniq, sid, mysqlSetting, cb) ->
+    console.log("CHECK CONFLICT MYSQL.LS")
+    console.log(columns)
+
+    wlog_table = 's_database_wlog'
+    colstring = '(`table`, `col`, `uniq_key`)'
+
+    datastring = '('
+    i = 0
+    for col in columns
+      for u in uniq
+        if i > 0
+          datastring += ', '
+        datastring += '("' + table_name + '", "' + col + '", "' + u + '")'
+        i += 1
+    datastring += ')'
+
+    sql = "SELECT COUNT(`_id`) AS COUNT FROM `" + wlog_table + "` WHERE " + colstring + " IN " + datastring + " AND `s_id` != '" + sid + "'"
+    db.executeSQL sql, mysqlSetting, (error, results) ->
+      cb error, results
 
   db.cleanNullRow = (table_name, with_delete, mysqlSetting, cb) ->
     db.getColumns table_name, mysqlSetting, (err, res) ->

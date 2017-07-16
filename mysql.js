@@ -425,13 +425,38 @@
               return cb(error, results, valid, "No info");
             });
           } else {
-            info = "Column must pkey or unique";
+            info = "Referenced column must pkey or unique";
             return cb(err, res, valid, info);
           }
         } else {
-          info = "Column not found";
+          info = "Referenced column not found";
           return cb(err, res, valid, info);
         }
+      });
+    };
+    db.checkConflict = function(table_name, columns, uniq, sid, mysqlSetting, cb){
+      var wlog_table, colstring, datastring, i, i$, len$, col, j$, len1$, u, sql;
+      console.log("CHECK CONFLICT MYSQL.LS");
+      console.log(columns);
+      wlog_table = 's_database_wlog';
+      colstring = '(`table`, `col`, `uniq_key`)';
+      datastring = '(';
+      i = 0;
+      for (i$ = 0, len$ = columns.length; i$ < len$; ++i$) {
+        col = columns[i$];
+        for (j$ = 0, len1$ = uniq.length; j$ < len1$; ++j$) {
+          u = uniq[j$];
+          if (i > 0) {
+            datastring += ', ';
+          }
+          datastring += '("' + table_name + '", "' + col + '", "' + u + '")';
+          i += 1;
+        }
+      }
+      datastring += ')';
+      sql = "SELECT COUNT(`_id`) AS COUNT FROM `" + wlog_table + "` WHERE " + colstring + " IN " + datastring + " AND `s_id` != '" + sid + "'";
+      return db.executeSQL(sql, mysqlSetting, function(error, results){
+        return cb(error, results);
       });
     };
     db.cleanNullRow = function(table_name, with_delete, mysqlSetting, cb){
