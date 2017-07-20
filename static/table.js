@@ -53,7 +53,9 @@ Table = (function(){
         } else if (row.type === "Data") {
           //this.data.push(parseInt(row.row) + 1);
           this.datarow.push(parseInt(row.row) + 1);
-          this.data = JSON.stringify(this.data);
+          //console.log("THE PARSE");
+          //console.log(this.data);
+          //this.data = JSON.stringify(this.data);
         }
       }
     }
@@ -426,18 +428,18 @@ Table = (function(){
     var i$, to$, col, tempobj, j$, ref$, len$, h, results$ = [];
     this.rows = [];
 
-    console.log("DEBUG HERE");
-    console.log(this.range);
-    console.log(this.range.length);
-    console.log(this.startcol);
-    console.log(this.endcol);
+    //console.log("DEBUG HERE");
+    //console.log(this.range);
+    //console.log(this.range.length);
+    //console.log(this.startcol);
+    //console.log(this.endcol);
     if (this.range && !this.startcol && !this.endcol) {
       try {
-        console.log("here");
+        //console.log("here");
         this.affectedcol = JSON.parse(this.range);
-        console.log(this.affectedcol);
+        //console.log(this.affectedcol);
       } catch (e$) {
-        console.log(e$);
+        //console.log(e$);
         temp = this.RangeComponent(String(this.range));
         this.startcol = temp[0];
         this.endcol = temp[2];

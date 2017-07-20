@@ -88,7 +88,6 @@
         };
         window.LoadState = function(){
           var savedData, lastDB, payload, request;
-          console.log("Load State");
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
           lastDB = document.getElementById(spreadsheet.idPrefix + "databaseLastDB");
           payload = {
@@ -100,7 +99,6 @@
             contentType: "application/json",
             data: JSON.stringify(payload),
             success: function(response){
-              console.log(response);
               if (response.length === 1) {
                 savedData.value = response[0]["table_json"];
                 if (response[0]["last_db_json"] === "undefined") {
@@ -387,8 +385,10 @@
           }
         };
         window.Synchronize = function(){
-          var savedData, sheet, loadsheet, sheetdict, getLink, request;
+          var savedData, errorMsg, sheet, loadsheet, sheetdict, getLink, request;
           savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData");
+          errorMsg = document.getElementById(spreadsheet.idPrefix + "databaseErrorMsg");
+          errorMsg.innerHTML = "Detecting Tables...";
           sheet = SocialCalc.GetSpreadsheetControlObject();
           loadsheet = new LoadSheet(sheet);
           sheetdict = loadsheet.LoadSheetDict();
@@ -400,7 +400,7 @@
             url: window.location.protocol + "//" + window.location.host + "/_hierachical/" + SocialCalc._room + "/20",
             contentType: "application/json",
             success: function(response){
-              var links, clusters, raw, data, i$, len$, cluster, gview, content_div, total, sd;
+              var links, clusters, raw, data, i$, len$, cluster, gview, content_div, total, errorMsg, sd;
               links = [];
               clusters = [];
               raw = [];
@@ -414,25 +414,39 @@
               gview = sheet.views.database.element;
               content_div = content_div_s;
               total = 0;
+              errorMsg = document.getElementById(spreadsheet.idPrefix + "databaseErrorMsg");
+              errorMsg.innerHTML = "Detecting Tables...";
               sd = [];
               return $.when.apply($, links).done(function(){
+                var error_box_s, error_box_e;
                 $.each(arguments, function(i, d){
                   var data, table;
                   data = d[0];
-                  if (data.length > 0) {
-                    table = new Table(sheetdict, data);
-                    table.SetColumnRange(parseInt(clusters[i][0]), parseInt(clusters[i][1]));
-                    table.name = "" + SocialCalc._room + "_t" + i + "";
-                    if (table.IsHasData()) {
-                      total += 1;
-                      sd.push(JSON.parse(table.Serialize()));
-                      return content_div += table.GetHTMLForm(total);
+                  if (typeof data !== 'undefined') {
+                    if (data.length > 0) {
+                      if (typeof clusters[i] !== 'undefined') {
+                        table = new Table(sheetdict, data);
+                        table.SetColumnRange(parseInt(clusters[i][0]), parseInt(clusters[i][1]));
+                        table.name = "" + SocialCalc._room + "_t" + i + "";
+                        if (table.IsHasData()) {
+                          total += 1;
+                          sd.push(JSON.parse(table.Serialize()));
+                          return content_div += table.GetHTMLForm(total);
+                        }
+                      }
                     }
                   }
                 });
-                savedData.value = JSON.stringify(sd);
-                content_div += content_div_e;
-                gview.innerHTML = sidebar_div + content_div;
+                if (sd.length !== 0) {
+                  savedData.value = JSON.stringify(sd);
+                  content_div += content_div_e;
+                  gview.innerHTML = sidebar_div + content_div;
+                  errorMsg.innerHTML = "Table(s) detected, configuration overwritten";
+                } else {
+                  error_box_s = "<div style=\"background: rgb(255, 210, 202); padding: 5px; border-radius: 3px;\">";
+                  error_box_e = "</div>";
+                  errorMsg.innerHTML = error_box_s + "No table detected" + error_box_e;
+                }
                 return window.SaveState();
               });
             },

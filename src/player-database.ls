@@ -75,7 +75,7 @@
     $.ajax request
 
   window.LoadState = ->
-    console.log("Load State");
+    #console.log("Load State");
     savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
     lastDB = document.getElementById(spreadsheet.idPrefix + "databaseLastDB")
 
@@ -87,7 +87,7 @@
         contentType: "application/json"
         data: JSON.stringify payload
         success: (response) ->
-          console.log(response)
+          #console.log(response)
           if response.length == 1
             savedData.value = response[0]["table_json"]
             if response[0]["last_db_json"] == "undefined"
@@ -367,6 +367,8 @@
 
   window.Synchronize = ->
     savedData = document.getElementById(spreadsheet.idPrefix + "databaseSavedData")
+    errorMsg = document.getElementById(spreadsheet.idPrefix + "databaseErrorMsg")
+    errorMsg.innerHTML = "Detecting Tables..."
 
     sheet = SocialCalc.GetSpreadsheetControlObject!
     loadsheet = new LoadSheet sheet
@@ -390,32 +392,44 @@
             links.push $.get(getLink(cluster.sc, cluster.ec, cluster.sr, cluster.er))
             clusters.push [cluster.sc, cluster.ec, cluster.sr, cluster.er]
 
-          ## console.log(raw)
-          ## console.log("DEBUGAA");
-          ## console.log(clusters);
-          ## console.log(links);
-
           gview = sheet.views.database.element
           content_div = content_div_s
           total = 0
 
+          errorMsg = document.getElementById(spreadsheet.idPrefix + "databaseErrorMsg")
+          errorMsg.innerHTML = "Detecting Tables..."
+
           ## Start flooding API
           sd = []
+
+          #console.log("LINKS")
+          #console.log(links)
 
           $.when.apply($, links).done ->
             $.each arguments, (i, d) ->
               data = d[0]
-              if data.length > 0
-                table = new Table sheetdict, data
-                table.SetColumnRange(parseInt(clusters[i][0]), parseInt(clusters[i][1]))
-                table.name = "" + SocialCalc._room + "_t" + (i) + ""
-                if table.IsHasData!
-                  total += 1
-                  sd.push JSON.parse(table.Serialize!)
-                  content_div += table.GetHTMLForm total
-            savedData.value = JSON.stringify sd
-            content_div += content_div_e
-            gview.innerHTML = sidebar_div + content_div
+              if typeof data != 'undefined'
+                if data.length > 0
+                  #console.log("DATA")
+                  #console.log(data)
+                  if typeof clusters[i] != 'undefined'
+                    table = new Table sheetdict, data
+                    table.SetColumnRange(parseInt(clusters[i][0]), parseInt(clusters[i][1]))
+                    table.name = "" + SocialCalc._room + "_t" + (i) + ""
+                    if table.IsHasData!
+                      total += 1
+                      sd.push JSON.parse(table.Serialize!)
+                      content_div += table.GetHTMLForm total
+            if sd.length != 0
+              savedData.value = JSON.stringify sd
+              content_div += content_div_e
+              gview.innerHTML = sidebar_div + content_div
+              errorMsg.innerHTML = "Table(s) detected, configuration overwritten"
+            else
+              error_box_s = "<div style=\"background: rgb(255, 210, 202); padding: 5px; border-radius: 3px;\">"
+              error_box_e = "</div>"
+              errorMsg.innerHTML = error_box_s + "No table detected" + error_box_e        
+
             window.SaveState!
         
         error: (response) ->
