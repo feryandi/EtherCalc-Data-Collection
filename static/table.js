@@ -511,7 +511,7 @@ Table = (function(){
     title_div += "<td width=\"50%\" style=\"text-align: right;\"><input type=\"button\" value=\"Save\" onclick=\"window.SaveConfiguration(" + i + ");\" style=\"font-size:x-small;\"> <input type=\"button\" value=\"Add Column\" onclick=\"window.AddColumn(" + i + ")\" style=\"font-size:x-small;\"> <input type=\"button\" value=\"Add Value Col.\" onclick=\"window.AddValueColumn(" + i + ")\" style=\"font-size:x-small;\"> <input type=\"button\" onclick=\"window.DeleteTable(" + i + ");\" value=\"Delete\" style=\"font-size:x-small;\">";
     title_div += "<br><br>Data Row <input id=\"t" + i + ".databaseRange\" class=\"btn btn-default btn-xs\" style=\"max-width: 105px\" value=\"" + this.data + "\"></td></tr></table>";
     whole_table += title_div;
-    begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Column</th><th>Type</th><th>Permitted Values</th><th>Relation</th><th>Unique</th><th></th></tr></thead>";
+    begin_table = "<table style=\"border-top:1px solid rgb(192,192,192);padding-top:16px;\"><thead><tr><th>Label Name</th><th>Data Column</th><th>Type</th><th>Permitted Values</th><th>Relation</th><th>Key</th><th></th></tr></thead>";
     whole_table += begin_table;
     n = 1;
     for (i$ = 0, len$ = hdata.length; i$ < len$; ++i$) {
