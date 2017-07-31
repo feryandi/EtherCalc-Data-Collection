@@ -353,8 +353,6 @@
         wcon_log = "`table` = '" + item + "' and `s_id` = '" + id + "'";
         return MYSQL.selectWhereData(db_log_name, "`uniq_key`, `col`", wcon_log, mysqlSetting, function(err, res){
           var result, headers, rl, i$, len$, r, processed;
-          console.log("clean select");
-          console.log(res);
           result = [];
           headers = [];
           rl = 0;
@@ -622,15 +620,13 @@
                   });
                 } else {
                   console.log("Table exists, where all broken and im tired");
-                  wcon = "`s_id` != '" + table.spreadsheet_id + "'";
+                  wcon = "`table` = '" + table.name + "' and `s_id` != '" + table.spreadsheet_id + "'";
                   return MYSQL.selectWhereData(db_log_name, "`_id`", wcon, mysqlSetting, function(err, res){
                     if (res.length > 0) {
                       this$.is_there_other = true;
                     }
                     return MYSQL.getColumns(table.name, mysqlSetting, function(err, res){
                       var colmatch, unqmatch, unqtotal, notmatch, name_not_unique, i$, len$, r, ref$, header, checked, j$, len1$, same_name, data;
-                      console.log("xoxo Checking Column Eq oxox");
-                      console.log(res);
                       colmatch = [];
                       unqmatch = [];
                       unqtotal = 0;
@@ -671,29 +667,31 @@
                           }
                         }
                       }
-                      console.log(colmatch);
-                      console.log(unqmatch);
-                      console.log(unqtotal);
-                      console.log(notmatch);
                       if (notmatch.length === 0) {
                         this$.is_column_same = true;
                       }
                       if (this$.is_column_same && unqmatch.length === unqtotal) {
+                        console.log("CASE 1");
                         return dbCleanup([table.name], table.spreadsheet_id, false, mysqlSetting, function(status){
                           return MYSQL.insertDupMultiData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
                             return writeLog(res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, function(err, res){
-                              var data;
                               console.log(res);
-                              data = {
-                                code: 0,
-                                status: this$.message
-                              };
-                              this$.response.type('application/json');
-                              return this$.response.json(200, data);
+                              return MYSQL.getNullColumns(table.name, mysqlSetting, function(err, res){
+                                return MYSQL.dropColumns(table.name, res, mysqlSetting, function(err, res){
+                                  var data;
+                                  data = {
+                                    code: 0,
+                                    status: this$.message
+                                  };
+                                  this$.response.type('application/json');
+                                  return this$.response.json(200, data);
+                                });
+                              });
                             });
                           });
                         });
                       } else if (!this$.is_column_same && !this$.is_there_other && unqmatch.length === unqtotal) {
+                        console.log("CASE 2");
                         return MYSQL.dropTable(table.name, mysqlSetting, function(err, res){
                           return MYSQL.createTable(table.name, table.headers, mysqlSetting, function(err, res){
                             return MYSQL.insertDupMultiData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
@@ -711,9 +709,11 @@
                           });
                         });
                       } else {
+                        console.log("CASE 3");
                         if (name_not_unique.length <= 0) {
                           if (unqtotal > 0) {
                             if (unqmatch.length === unqtotal) {
+                              console.log("CASE 3.1");
                               return dbCleanup([table.name], table.spreadsheet_id, false, mysqlSetting, function(status){
                                 return MYSQL.addColumns(table.name, notmatch, mysqlSetting, function(err, res){
                                   return MYSQL.insertDupMultiData(table.name, table.headers, table.data, mysqlSetting, function(err, res){
@@ -733,6 +733,7 @@
                                 });
                               });
                             } else {
+                              console.log("CASE 3.1");
                               this$.message = "Must contain all and same unique column";
                               data = {
                                 code: 1,
@@ -1034,7 +1035,6 @@
                     }
                     result = [];
                     lines = data.split("\n");
-                    console.log(lines);
                     for (i$ = 0, len$ = lines.length; i$ < len$; ++i$) {
                       line = lines[i$];
                       obj = {};
@@ -1051,7 +1051,6 @@
               };
               return feature(featurePath, content, function(){
                 return crf(filePath, featurePath, function(data){
-                  console.log(data);
                   this$.response.type('application/json');
                   return this$.response.json(200, data);
                 });
@@ -1476,7 +1475,6 @@
       data: function(){
         var ref$, room, msg, user, ecell, cmdstr, type, auth, reply, broadcast, this$ = this;
         ref$ = this.data, room = ref$.room, msg = ref$.msg, user = ref$.user, ecell = ref$.ecell, cmdstr = ref$.cmdstr, type = ref$.type, auth = ref$.auth;
-        console.log("on data: ", (import$({}, this.data)));
         room = (room + "").replace(/^_+/, '');
         if (EXPIRE) {
           DB.expire("snapshot-" + room, EXPIRE);

@@ -236,9 +236,6 @@
     db.forEach (item, index, array) ->
       wcon_log = "`table` = '" + item + "' and `s_id` = '" + id + "'"
       MYSQL.selectWhereData db_log_name, "`uniq_key`, `col`", wcon_log, mysqlSetting, (err, res) ->
-        console.log("clean select")
-        console.log(res)
-
         result = []
         headers = []
         rl = 0
@@ -419,15 +416,12 @@
             else
               console.log("Table exists, where all broken and im tired")
               ## Cek apakah ada data dari spreadsheet lain?
-              wcon = "`s_id` != '" + table.spreadsheet_id + "'"
+              wcon = "`table` = '" + table.name + "' and `s_id` != '" + table.spreadsheet_id + "'"
               MYSQL.selectWhereData db_log_name, "`_id`", wcon, mysqlSetting, (err, res) ->
                 if res.length > 0
                   this$.is_there_other = true
                 MYSQL.getColumns table.name, mysqlSetting, (err, res) ->
                   # Cek Kecocokan Kolom
-                  console.log("xoxo Checking Column Eq oxox")
-                  console.log(res)
-
                   # Urutan sekarang tidak diperhitungkan
                   colmatch = []
                   unqmatch = []
@@ -467,16 +461,12 @@
                       if header.name != "_id"
                         notmatch.push(header)
 
-                  console.log(colmatch)
-                  console.log(unqmatch)
-                  console.log(unqtotal)
-                  console.log(notmatch)
-
                   if notmatch.length == 0
                     this$.is_column_same = true
 
                   ## Kalo kolom sama
                   if this$.is_column_same and unqmatch.length == unqtotal
+                    console.log("CASE 1")
                     #### OK, DELETE ID YANG SAMA
                     #### Insert
                     ## Delete isi semua tabel WHERE id_spreadsheet, isi ulang
@@ -484,13 +474,16 @@
                       MYSQL.insertDupMultiData table.name, table.headers, table.data, mysqlSetting, (err, res) ->
                         writeLog res.insertId, res.affectedRows, table.unique_vals, table, mysqlSetting, (err, res) ->
                           console.log(res)
-                          data =
-                            * code: 0
-                              status: this$.message
-                          this$.response.type \application/json
-                          this$.response.json 200 data 
+                          MYSQL.getNullColumns table.name, mysqlSetting, (err, res) ->
+                            MYSQL.dropColumns table.name, res, mysqlSetting, (err, res) ->
+                              data =
+                                * code: 0
+                                  status: this$.message
+                              this$.response.type \application/json
+                              this$.response.json 200 data 
 
                   else if not this$.is_column_same and not this$.is_there_other and unqmatch.length == unqtotal
+                    console.log("CASE 2")
                     ## Kalo kolom beda dan ga ada yang lain
                     #### DROP
                     #### CREATE BARU ....
@@ -505,10 +498,12 @@
                             this$.response.type \application/json
                             this$.response.json 200 data
                   else
+                    console.log("CASE 3")
                     ## Kalo kolom beda dan ada yang lain
                     if name_not_unique.length <= 0
                       if unqtotal > 0
                         if unqmatch.length == unqtotal
+                          console.log("CASE 3.1")
                           ## Cek column
                           #### Kalo column nya sama... (udah diatas)
                           ## ----------------------------------------
@@ -527,6 +522,7 @@
                                   this$.response.json 200 data
 
                         else
+                          console.log("CASE 3.1")
                           #### ERROR
                           this$.message = "Must contain all and same unique column"
                           data =
@@ -780,7 +776,7 @@
               return console.log(err);
             result = []
             lines = data.split "\n"
-            console.log(lines)
+            #console.log(lines)
             for line in lines
               obj = {}
               elemt = line.split "\t"
@@ -792,7 +788,7 @@
 
       feature featurePath, content, ->
         crf filePath, featurePath, (data) ->
-          console.log(data)
+          #console.log(data)
           this$.response.type \application/json
           this$.response.json 200 data
 
@@ -1032,7 +1028,7 @@
   @on data: !->
     {room, msg, user, ecell, cmdstr, type, auth} = @data
     # eddy
-    console.log "on data: " {...@data} 
+    # console.log "on data: " {...@data} 
     room = "#room" - /^_+/ # preceding underscore is reserved
     DB.expire "snapshot-#room", EXPIRE if EXPIRE
     reply = (data) ~> @emit {data}

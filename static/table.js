@@ -147,7 +147,7 @@ Table = (function(){
               }
             } else if (row['vtype'] == "txt" && cell.mtype != "str") {
               return error;
-            } else if (row['vtype'] == "bln" && cell.mtype != "str") {
+            } else if (row['vtype'] == "bln") {
               text = cell.cstr.toString().toLowerCase();
               if (!(text == "true" || text == "false")) {
                 return error;
@@ -161,17 +161,15 @@ Table = (function(){
 
             // console.log(cellname + " <~ r: " + row['vrange']);
             if (therange.charAt(0) == "[" && therange.slice(-1) == "]") {
-              console.log("ARRAY");
             // EX: ["text01","text02"] (JSONArray)
               if (!(therange.includes(cell.cstr.toString()))) {
                 error['description'] = "Not in array of accepted string";
                 console.log(error);
                 return error;
               }
-            } else if (therange.includes("-")) {
-              console.log("BETWEEN");
+            } else if (therange.includes("~")) {
             // EX: 100-2100 OR 10.5-1000
-              values = therange.split("-");
+              values = therange.split("~");
               if (values[0] > values[1]) {
                 error['description'] = "The between rule is not right";
                 console.log(error);
@@ -186,7 +184,6 @@ Table = (function(){
                 }
               }
             } else if (therange.charAt(0) == "<") {
-              console.log("LESS");
             // EX: <200 OR <=200
               num = parseInt(cell.cstr.toString());
               // TO-DO: Check NaN
@@ -206,7 +203,6 @@ Table = (function(){
                 }
               }
             } else if (therange.charAt(0) == ">") {
-              console.log("GREATER");
             // EX: >200 OR >=200
               num = parseInt(cell.cstr.toString());
               // TO-DO: Check NaN
@@ -226,7 +222,6 @@ Table = (function(){
                 }            
               }
             } else if (therange.charAt(0) == "=") {
-              console.log("EQUAL");
             // EX: =200
               val = parseInt(therange.substr(1));
               if (num != val) {
@@ -472,20 +467,21 @@ Table = (function(){
           }
         }
         if (hcell) {
+          hcstr = hcell.cstr + " "
           try {
-            if (laststr.trim() != hcell.cstr.trim()) {
-              laststr += hcell.cstr;
-              if (tempobj['header'].trim() != "" && hcell.cstr.trim() != "") {
+            if (laststr.trim() != hcstr.trim()) {
+              laststr += hcstr;
+              if (tempobj['header'].trim() != "" && hcstr.trim() != "") {
                 tempobj['header'] += "_";
               }
-              tempobj['header'] += hcell.cstr;
+              tempobj['header'] += hcstr;
             }
           } catch (e) {
-            laststr += hcell.cstr;
-            if (tempobj['header'].trim() != "" && hcell.cstr.trim() != "") {
+            laststr += hcstr;
+            if (tempobj['header'].trim() != "" && hcstr.trim() != "") {
               tempobj['header'] += "_";
             }
-            tempobj['header'] += hcell.cstr;
+            tempobj['header'] += hcstr;
           }
         }
       }
